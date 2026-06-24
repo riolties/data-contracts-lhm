@@ -1,4 +1,4 @@
-name: intake-to-contract
+name: "intake-to-contract"
 # Simuliert den ServiceNow-Trigger nach Governance-Freigabe:
 #   1. Issue bekommt Label 'owner-approved' → Workflow prüft Freigabe-Vollständigkeit
 #   2. Profiler läuft auf source.location aus dem Intake-Payload
@@ -24,8 +24,7 @@ permissions:
 
 jobs:
   build-contract:
-    # Issue-Trigger: nur bei Label 'owner-approved'
-    if: |
+    if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'repository_dispatch' ||
       (github.event_name == 'issues' && github.event.label.name == 'owner-approved')
@@ -54,7 +53,6 @@ jobs:
             echo "$WD_INPUT" > "$INTAKE_FILE"
 
           elif [ "$EVENT" = "repository_dispatch" ]; then
-            # ServiceNow schickt intake.json als client_payload
             echo "$RD_PAYLOAD" | python3 -c "
           import json, sys
           p = json.load(sys.stdin)
@@ -63,13 +61,11 @@ jobs:
           "
 
           else
-            # Issue-Body: erstes ```json ... ``` Block
             python3 -c "
           import json, re, os, sys
           body = os.environ.get('ISSUE_BODY', '')
           m = re.search(r'\`\`\`json\s*(.*?)\s*\`\`\`', body, re.DOTALL)
           if not m:
-              # Fallback: gesamte Body als JSON
               data = json.loads(body.strip())
           else:
               data = json.loads(m.group(1))
@@ -77,12 +73,10 @@ jobs:
           "
           fi
 
-          # personal_data prüfen → dsb-approved nötig?
           PERSONAL=$(python3 -c "import json; d=json.load(open('$INTAKE_FILE')); print(str(d.get('personal_data', False)).lower())")
           echo "personal_data=$PERSONAL" >> "$GITHUB_OUTPUT"
           echo "intake_file=$INTAKE_FILE" >> "$GITHUB_OUTPUT"
 
-          # Domain + Product für Branch-Name
           DOMAIN=$(python3 -c "import json; d=json.load(open('$INTAKE_FILE')); print(d['domain'])")
           PRODUCT=$(python3 -c "import json; d=json.load(open('$INTAKE_FILE')); print(d['product'])")
           echo "domain=$DOMAIN" >> "$GITHUB_OUTPUT"
@@ -90,7 +84,7 @@ jobs:
 
       # --- DSB-Freigabe prüfen (nur bei personal_data=true, Issue-Trigger) ---
       - name: DSB-Freigabe prüfen
-        if: |
+        if: >-
           steps.intake.outputs.personal_data == 'true' &&
           github.event_name == 'issues'
         env:
@@ -137,10 +131,8 @@ jobs:
             - personal_data: `${{ steps.intake.outputs.personal_data }}`
 
             **Gates:** `validate-contracts` + `pipeline-and-quality` müssen grün sein.
-          labels: |
-            owner-approved
-            ${{ steps.intake.outputs.personal_data == 'true' && 'dsb-approved' || '' }}
+          labels: "owner-approved"
 
       - name: PR-URL ausgeben
         if: steps.pr.outputs.pull-request-url != ''
-        run: echo "PR geöffnet: ${{ steps.pr.outputs.pull-request-url }}"
+        run: echo "PR geöffnet ${{ steps.pr.outputs.pull-request-url }}"
