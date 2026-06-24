@@ -1,0 +1,145 @@
+# ODCS-v3-Contract — INPUT PORT (Rohdaten Raddauerzählstellen)
+# Beschreibt die Quelle so, wie sie ankommt (CSV File-Export). Spalten/Typen
+# wurden mit scripts/profile_source.py aus den Daten abgeleitet; fachliche
+# Beschreibungen + Governance ergänzt der Datenverantwortliche (SN-Formular).
+version: 1.0.0
+apiVersion: v3.1.0
+kind: DataContract
+id: lhm:mobilitaetsreferat:input:radverkehr
+status: active
+name: Raddauerzählstellen München — Rohdaten
+domain: mobilitaetsreferat
+
+description:
+  purpose: Tägliche Zählwerte der Münchner Rad-Dauerzählstellen inkl. Wetterbegleitdaten, wie aus opendata.muenchen.de exportiert.
+  usage: Input-Port des Datenprodukts radverkehr — Quelle für dlt-Ingestion → dbt-Staging.
+  limitations: Roh- und unbereinigt. `uhrzeit_ende` ist in der Quelle als Dezimaltrenner formatiert (z.B. 23.59 statt 23:59) und muss im Staging normalisiert werden. `min-temp`/`max-temp` mit Bindestrich im Spaltennamen.
+
+servers:
+  - server: csv-export
+    type: local
+    description: Manueller CSV-Export aus opendata.muenchen.de (Demo unter data/); Trennzeichen Komma.
+    path: data/sample_radverkehr_tageswerte_2025_01.csv
+    format: csv
+
+schema:
+  - name: radverkehr_rohdaten
+    logicalType: object
+    physicalType: csv
+    physicalName: sample_radverkehr_tageswerte_2025_01.csv
+    dataGranularityDescription: Eine Zeile je Zählstelle und Tag.
+    properties:
+      - name: datum
+        logicalType: date
+        physicalType: DATE
+        required: true
+        description: Zähltag (Quellformat YYYY.MM.DD).
+        examples: ["2025.01.01"]
+      - name: uhrzeit_start
+        logicalType: time
+        physicalType: TIME
+        required: true
+        description: Beginn des Zählintervalls (in der Quelle konstant 00:00 = Tagesbeginn).
+        examples: ["00:00"]
+      - name: uhrzeit_ende
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        description: Ende des Zählintervalls; Quelle nutzt '.' als Trenner (23.59) — im Staging zu normalisieren.
+        examples: ["23.59"]
+      - name: zaehlstelle
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        description: Name der Dauerzählstelle (z.B. Arnulf, Erhardt).
+        examples: ["Arnulf"]
+      - name: richtung_1
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+        description: Gezählte Radfahrten in Richtung 1.
+        examples: ["235"]
+      - name: richtung_2
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+        description: Gezählte Radfahrten in Richtung 2.
+        examples: ["19"]
+      - name: gesamt
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+        description: Summe beider Richtungen (= richtung_1 + richtung_2).
+        examples: ["254"]
+      - name: min-temp
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+        description: Tagestiefsttemperatur in °C.
+        examples: ["-3.2"]
+      - name: max-temp
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+        description: Tageshöchsttemperatur in °C.
+        examples: ["12.7"]
+      - name: niederschlag
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+        description: Niederschlagsmenge in mm.
+        examples: ["0"]
+      - name: bewoelkung
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+        description: Bewölkungsgrad in Prozent (0–100).
+        examples: ["70"]
+      - name: sonnenstunden
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+        description: Sonnenscheindauer in Stunden.
+        examples: ["8.1"]
+    # Quality-Konvention (siehe docs/architecture.md): ODCS-Typ 'text' (schema-valide),
+    # die maschinell ausführbare Regel liegt in customProperties (engine + Parameter).
+    # run_quality.py (Workstream C) liest engine/query/column/expect.
+    quality:
+      - type: text
+        name: richtungssumme
+        description: Richtungssumme konsistent — gesamt = richtung_1 + richtung_2.
+        dimension: accuracy
+        severity: error
+        customProperties:
+          - { property: engine, value: sql }
+          - { property: query, value: "SELECT count(*) FROM radverkehr_rohdaten WHERE gesamt <> richtung_1 + richtung_2" }
+          - { property: expect, value: 0 }
+      - type: text
+        name: row_count_min
+        description: Es wurde mindestens eine Zeile geliefert.
+        dimension: completeness
+        severity: error
+        customProperties:
+          - { property: engine, value: row_count_min }
+          - { property: min, value: 1 }
+
+slaProperties:
+  - property: frequency
+    value: 1
+    unit: d
+    description: Tägliche Aktualisierung.
+  - property: latency
+    value: 1
+    unit: d
+    description: Daten spätestens am Folgetag verfügbar.
+
+# --- LHM-Governance (customProperties) — siehe schemas/lhm-rules.md ---
+customProperties:
+  - { property: classification, value: public }
+  - { property: contract_status, value: active }
+  - { property: personal_data, value: false }
+  - { property: open_data_candidate, value: true }
+  - { property: license, value: "https://www.govdata.de/dl-de/by-2-0" }
+  - { property: spatial, value: "https://sws.geonames.org/2867714/" }
+  - { property: accrual_periodicity, value: "http://publications.europa.eu/resource/authority/frequency/DAILY" }
+  - { property: govdata_category, value: ["http://publications.europa.eu/resource/authority/data-theme/TRAN"] }

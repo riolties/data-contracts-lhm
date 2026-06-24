@@ -1,0 +1,8 @@
+# Datendomäne (LHM-Referat) — Pilot-Produzent, Platzhalter
+name: kreisverwaltungsreferat
+title: Kreisverwaltungsreferat (KVR)
+description: "Bürgerangelegenheiten, Melde- und Einwohnerwesen. Produzent der Adressdaten im Phase-1-Pilot (produzierende Einheit: Amt für Einwohnerwesen/EWO; Konsument: Mobilitätsreferat)."
+data_owner: TODO-dateneigner@muenchen.de
+data_steward: TODO-steward@muenchen.de
+status: planned
+data_products: []   # geplant: adressdaten (personenbezogen -> DSB-Freigabe nötig)
