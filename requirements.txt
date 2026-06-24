@@ -6,3 +6,4 @@ duckdb>=1.0          # lokales Warehouse + Quality-Engine
 dlt[duckdb]>=1.0     # Ingestion CSV -> DuckDB
 dbt-duckdb>=1.8      # Transformation (staging -> mart)
 requests>=2.31       # CKAN-API
+streamlit>=1.35      # Demo-UI (sn_mock.py)
