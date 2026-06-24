@@ -48,8 +48,8 @@ Das vendored ODCS-Schema lässt unter `unevaluatedProperties: false` bei `qualit
 
 `severity: error` blockt das Gate, `warning` meldet nur. Beispiel siehe [Output-Contract](../domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr-tageswerte.output.odcs.yaml).
 
-## Profiler (lokales Hilfsmittel)
-`scripts/profile_source.py` leitet aus den Quelldaten Spalten/Typen, Null-/Unique-Quoten, Kandidaten-Quality (not-null, range, unique, Summen-Konsistenz wie `gesamt = richtung_1 + richtung_2`) und Freshness (`max(datum)`) ab. Er läuft **außerhalb der Automatisierung**: der Datenverantwortliche nutzt ihn lokal, um das ServiceNow-Formular informiert auszufüllen — kein Datenzugriff vor der Governance-Freigabe. Siehe [Profiler-Rolle im Plan](hackathon-plan.md).
+## Profiler (Pipeline-Schritt 1 nach Freigabe)
+`scripts/profile_source.py` ist der **erste Schritt der Post-Freigabe-Pipeline**: nach der Governance-Freigabe in ServiceNow liest es die CSV aus `source.location` und erzeugt `profiling.json` mit Spalten/Typen, Null-/Unique-Quoten, Kandidaten-Quality (not-null, range, unique, Summen-Konsistenz wie `gesamt = richtung_1 + richtung_2`) und Freshness (`max(datum)`). Der Datenverantwortliche tippt **keine Spalten** ins SN-Formular — die kommen automatisch aus der Quelle (Datenzugriff erst nach Freigabe). `intake_to_odcs.py` (Schritt 2, Workstream B) merged `profiling.json` + Governance-Felder zum finalen Contract. Siehe [Profiler-Rolle im Plan](hackathon-plan.md).
 
 ## Versionierung & Deprecation von Output-Ports
 - Contract-`version` (SemVer): Patch = Doku/Quality-Schwellen, Minor = additive Spalten, **Major = Breaking** (Spalte entfernt/umbenannt/Typ geändert).

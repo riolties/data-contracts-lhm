@@ -162,7 +162,7 @@ def profile_csv(path: str) -> dict:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="Profiler: Quelle -> Profiling-Protokoll (lokales Hilfsmittel)")
+    ap = argparse.ArgumentParser(description="Profiler (Pipeline-Schritt 1): Quelle -> profiling.json")
     ap.add_argument("--source", required=True, help="Pfad zur Quelle (CSV im Demo)")
     ap.add_argument("--out", default="-", help="Zieldatei oder '-' für stdout")
     args = ap.parse_args(argv)
