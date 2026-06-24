@@ -15,3 +15,7 @@ pipeline/dbt/.user.yml
 /output/
 access-policy.json
 grants.sql
+
+# CI-Arbeitsdateien der intake-to-contract-Pipeline (sollen nicht in den PR)
+/intake_payload.json
+/profiling.json
