@@ -1,199 +1,188 @@
-# Hackathon-Plan: Data Contracts & Data Products als GitOps-Blueprint (LHM)
+# Hackathon-Plan: Data Contracts & Data Products mit Pipeline (LHM)
 
 ## Context
 
-Die Landeshauptstadt München (DAICE + aufzubauendes Data Office) baut ein **Data Mesh**, in dem **Data Contracts die Governance-Grundlage** bilden. Datendomänen sind organisatorisch die **Referate**. Phase-1-Pilot laut interner Konzeption: **EWO (Amt für Einwohnerwesen)** als Produzent (Adressdaten) → **Mobilitätsreferat** als Konsument. Bestehender Ziel-Stack: PostgreSQL, dbt, dlt, Keycloak, CKAN + `ckanext-dcat`, DCAT-AP.de → GovData. Rollenmodell: **Datenverantwortliche/Dateneigner (Data Owner)**, **Data Steward**, **Datenschutzbeauftragte (DSB)**.
+Die Landeshauptstadt München (DAICE + aufzubauendes Data Office) baut ein **Data Mesh**, in dem **Data Contracts die Governance-Grundlage** bilden. Datendomänen sind organisatorisch die **Referate**. Phase-1-Pilot: **EWO** (Produzent, Adressdaten) → **Mobilitätsreferat** (Konsument). Vorhandener LHM-Werkzeugkasten: R, SPSS, Python, **GitLab Runners**, **dbt**, Node-RED, VS Code, **FME**; Daten liegen in Fachverfahren/DBs (Postgres, Oracle), angebunden über Reporting-DB, manuellen File-Export, Laufwerke oder EAI-Schnittstelle. Ziel-Stack: PostgreSQL, dbt, dlt, Keycloak, CKAN + `ckanext-dcat` → GovData. Rollen: **Datenverantwortliche/Dateneigner (Data Owner)**, **Data Steward**, **Datenschutzbeauftragte (DSB)**.
 
-Ziel des Hackathons (3 Personen, 12 h): In einem **GitHub-Repo** (`riolties/data-contracts-lhm`) exemplarisch die **Domänen-, Contract- und Pipeline-Struktur** aufbauen, die 1:1 intern **auf GitLab** wiederverwendbar ist — inkl. **Data-Product-Topologie (Input-/Output-Ports)**, **ODCS-v3-Contracts**, **Freigabe-Workflow**, **Quality Gate** und **CKAN-Anbindung**.
+Ziel des Hackathons (3 Personen, 12 h): In einem **GitHub-Repo** (`riolties/data-contracts-lhm`) den **kompletten Lebenszyklus eines Datenprodukts als Code** zeigen — von der **Datenquelle** über **automatisch abgeleitete Contracts**, **Ingestion (dlt) + Transformation (dbt)**, **Quality Gate** und **Freigabe** bis **CKAN-Katalog** — 1:1 portierbar auf **GitLab + ServiceNow**.
 
 **Bestätigte Festlegungen:**
 - Standard: **ODCS (Bitol) v3.1.0** (vendored JSON-Schema).
-- Repo-Struktur **nach Datendomänen = Referate** (`domains/<referat>/data-products/<produkt>/…`).
-- **Intake: ServiceNow-Katalogformular** (kein LLM) → strukturiertes JSON → Pipeline erzeugt ODCS-YAML + PR.
-- **Freigabe: ServiceNow** mehrstufig (Dateneigner; + DSB wenn `dsgvo: ja`). Im Hackathon **über PR-Reviews + Labels simuliert** (`owner-approved`, `dsb-approved`).
-- **Quality Gate: leichtgewichtig Python/SQL** (duckdb/pandas) gegen echte Daten; deklariert im ODCS-`quality`-Block.
-- **CKAN-Demo: lokale CKAN via Docker** — Contract gemerged → Metadaten in CKAN aktualisiert.
-- Beispieldomäne: **Mobilitätsreferat / Datenprodukt „radverkehr"** auf Basis der offenen **Raddauerzählstellen** (opendata.muenchen.de, Lizenz dl-by-de/2.0). Passt zum Pilot, kein DSGVO-Risiko.
-
-Outcome: Ein vorzeigbarer, GitLab-portabler **Contract-as-Code-Blueprint** mit einem voll durchgespielten Datenprodukt und dem kompletten Lebenszyklus Erfassung → Freigabe → Validierung → Quality → Katalog/CKAN.
+- Ausrichtung: **Full Pipeline inkl. dbt** (nicht nur Metadaten).
+- **Contract aus den Daten ziehen:** ein **Profiler** leitet technisches Schema + Kandidaten-Quality-Regeln aus der Quelle ab; der Mensch ergänzt via ServiceNow nur Governance-Felder.
+- Quell-Connector in der Demo: **nur CSV File-Export** (repräsentiert „manueller File-Export aus Fachverfahren"). Quelle wird über `source.type` abstrahiert (`file_export | reporting_db | network_drive | eai`), weitere Connectoren später.
+- Lokales Warehouse: **DuckDB** (dlt-Load + **dbt-duckdb**) — kein DB-Server nötig, GitLab-Runner-tauglich.
+- **Intake/Governance: ServiceNow-Katalogformular**; ServiceNow **triggert** die Pipeline (REST/Trigger-Token), **GitLab-CI öffnet den Merge Request** (lose Kopplung). Im Hackathon via `repository_dispatch`/Issue-Form abgebildet.
+- **Freigabe: ServiceNow** mehrstufig (Dateneigner; + DSB wenn `personal_data: true`). Im Hackathon über PR-Labels (`owner-approved`, `dsb-approved`) simuliert.
+- **Quality Gate** (bleibt, weil Pipeline): Contract-Regeln + **dbt-Tests** laufen gegen die **materialisierten Daten**, nicht gegen ein statisches Sample.
+- **CKAN-Demo: lokale CKAN via Docker.**
+- Beispiel: **Mobilitätsreferat / „radverkehr"** auf Basis der **Raddauerzählstellen** (opendata.muenchen.de, Lizenz dl-by-de/2.0).
 
 ---
 
-## Lebenszyklus (Zielbild in einem Bild)
+## Lebenszyklus (Zielbild)
 
 ```
-Datenverantwortliche/r
-   │  füllt
+Quelle: CSV File-Export aus Fachverfahren (Raddaten)
+   │  profile_source.py  →  Schema + Kandidaten-Quality-Regeln (technisch)
    ▼
-ServiceNow-Katalogformular ──(REST, intake.json)──► GitHub/GitLab Pipeline
-                                                        │ intake_to_odcs.py
-                                                        ▼
-                                              PR mit *.odcs.yaml + data-product.yaml
-                                                        │
-                          ┌─────────────────────────────┼─────────────────────────────┐
-                          ▼                             ▼                              ▼
-                  validate-contracts            quality-gate (DQ)            approval-gate
-                  (ODCS + LHM-Regeln)        (Python/SQL vs. Daten)   (Dateneigner + DSB falls DSGVO)
-                          └─────────────────────────────┼─────────────────────────────┘
-                                                        ▼  alle grün + Freigaben
-                                                      Merge
-                                                        │ publish-ckan-catalog
-                                                        ▼
-                                         CKAN (lokal/Docker) + DCAT-AP.de-Extras
-                                         + gerenderte Katalogseite im Repo
+Draft-ODCS (technisch)            ServiceNow-Katalogformular (Governance:
+   │                              Owner, Klassifizierung, Rechtsgrundlage,
+   │                              DSGVO-Flag, Open-Data, Beschreibungen)
+   └───────────────┬───────────────────────┘
+                   │ intake_to_odcs.py  (merge technisch + Governance)
+                   │ ServiceNow ──trigger(intake.json)──►  GitLab-CI öffnet MR
+                   ▼
+         PR/MR: data-product.yaml + *.odcs.yaml
+                   │
+     ┌─────────────┼───────────────┬───────────────────────────┐
+     ▼             ▼               ▼                           ▼
+ validate-      approval-gate   PIPELINE-BUILD:            (auf PR)
+ contracts     (Owner + DSB)    dlt: CSV → DuckDB(raw)
+ (ODCS+LHM)                     dbt: raw → radverkehr_tageswerte
+                                quality-gate: Contract-Regeln + dbt-Tests
+                                              vs. materialisierte Daten
+     └─────────────┴───────────────┴───────────────────────────┘
+                   ▼ alle grün + Freigaben → Merge
+        publish-ckan-catalog → CKAN (lokal/Docker) + DCAT-AP.de-Extras
+                              + gerenderte Katalogseite
 ```
 
-Kein Mensch schreibt YAML von Hand; kein LLM im kritischen Pfad.
+Kein Mensch tippt technisches Schema; kein LLM im kritischen Pfad.
 
 ---
 
-## LHM-Mapping: Datendomänen → Repo-Struktur
+## ServiceNow ↔ GitLab (Ziel-Architektur, im Plan festgeschrieben)
 
-Top-Level `domains/` bildet die **Referate** ab. Jede Domäne enthält Datenprodukte; jedes Produkt hat eine Port-Topologie und ODCS-Contracts.
+- **Trigger statt Direkt-MR:** ServiceNow-Flow (IntegrationHub/REST) ruft nach Submit+Freigabe einen **GitLab Pipeline-Trigger** (Trigger-Token) auf und übergibt `intake.json`. Ein **CI-Job** legt Branch an, committet den Contract und öffnet den **MR** via `glab`/GitLab-API. Vorteil: Branch-/Layout-Logik bleibt versioniert im Repo; ServiceNow muss die Repo-Struktur nicht kennen.
+- **Freigabe:** Governance-Approval (Dateneigner, DSB) in **ServiceNow** (erreicht Nicht-Git-Nutzer LHM-weit); der freigegebene Request setzt MR-Approval via API bzw. gibt den Merge frei. Technischer Merge in GitLab.
+- **Hackathon-Abbildung:** `repository_dispatch` = Pipeline-Trigger; Action öffnet PR = CI öffnet MR; PR-Labels = ServiceNow-Approval-Stufen.
+
+---
+
+## Repo-Struktur (Datendomänen = Referate)
 
 ```
 data-contracts-lhm/
 ├── README.md
-├── docs/
-│   ├── architecture.md          # Domänen-, Data-Product- & Port-Modell
-│   ├── governance.md            # Rollen + Freigabe-Workflow (ServiceNow)
-│   └── contributing.md          # Onboarding eines Datenprodukts
-├── schemas/
-│   ├── odcs-v3.schema.json      # offizielles ODCS-v3 JSON-Schema (vendored)
-│   ├── intake.schema.json       # Schema des ServiceNow-Formular-Payloads
-│   └── lhm-rules.md             # LHM-Pflichtregeln (DSGVO/DCAT) über ODCS hinaus
+├── docs/            architecture.md · governance.md · contributing.md
+├── schemas/         odcs-v3.schema.json · intake.schema.json · lhm-rules.md
 ├── domains/
 │   ├── mobilitaetsreferat/
-│   │   ├── domain.yaml          # Domänen-Metadaten, Data Owner/Steward
-│   │   └── data-products/
-│   │       └── radverkehr/                       # voll ausgearbeitetes Beispiel
-│   │           ├── data-product.yaml             # Port-Topologie
-│   │           ├── contracts/
-│   │           │   ├── input/opendata-raddaten.input.odcs.yaml
-│   │           │   └── output/radverkehr-tageswerte.output.odcs.yaml
-│   │           └── README.md                     # auto-generierte Katalogseite
-│   └── ewo/                                       # Pilot-Produzent (Platzhalter)
+│   │   ├── domain.yaml
+│   │   └── data-products/radverkehr/
+│   │       ├── data-product.yaml        # source.type: file_export · Port-Topologie
+│   │       ├── contracts/
+│   │       │   ├── input/opendata-raddaten.input.odcs.yaml
+│   │       │   └── output/radverkehr-tageswerte.output.odcs.yaml
+│   │       └── README.md                # auto-generierte Katalogseite
+│   └── ewo/                             # Pilot-Produzent (Platzhalter)
 │       ├── domain.yaml
 │       └── data-products/.gitkeep
-├── intake/
-│   ├── servicenow-catalog-item.md  # Feld-Mapping ServiceNow → intake.json
-│   └── example-intake.json         # Beispiel-Payload (Demo-Trigger)
-├── scripts/
-│   ├── intake_to_odcs.py        # intake.json → ODCS-YAML + data-product.yaml
-│   ├── validate_odcs.py         # jsonschema (ODCS) + LHM-Regeln
-│   ├── run_quality.py           # ODCS-quality-Block → duckdb/pandas-Checks
-│   ├── ckan_publish.py          # ODCS → CKAN-Dataset (+ DCAT-AP.de-Extras)
-│   └── render_catalog.py        # Contracts → Markdown-Katalog
-├── ckan/
-│   └── docker-compose.yml       # lokale CKAN-Instanz für die Demo
+├── intake/          servicenow-catalog-item.md · example-intake.json
+├── pipeline/
+│   ├── ingest/      load_csv.py         # dlt: CSV → DuckDB (raw)
+│   └── dbt/         dbt-duckdb-Projekt  # models/staging + models/mart + schema.yml (tests)
+├── data/            kleines CSV-Sample / .gitkeep
+├── scripts/         profile_source.py · intake_to_odcs.py · validate_odcs.py
+│                    run_quality.py · ckan_publish.py · render_catalog.py
+├── ckan/            docker-compose.yml  # lokale CKAN
 └── .github/
-    ├── ISSUE_TEMPLATE/new-data-contract.yml   # Fallback-Erfassung (Demo)
+    ├── ISSUE_TEMPLATE/new-data-contract.yml      # Fallback-Erfassung
     └── workflows/
-        ├── intake-to-contract.yml    # intake.json → YAML → PR
-        ├── validate-contracts.yml    # PR-Gate: ODCS + LHM-Regeln
-        ├── quality-gate.yml          # PR-Gate: ausgeführte DQ-Checks
-        ├── approval-gate.yml         # PR-Gate: owner/dsb-Freigabe (Labels)
+        ├── intake-to-contract.yml    # intake.json → YAML → PR (+Labels)
+        ├── validate-contracts.yml    # ODCS + LHM-Regeln
+        ├── pipeline-and-quality.yml  # dlt → dbt → Quality (gegen materialisierte Daten)
+        ├── approval-gate.yml         # owner/dsb-Freigabe (Labels)
         └── publish-ckan-catalog.yml  # nach Merge: CKAN + Katalog
 ```
 
-**Konventionen:** Domänen-/Produktordner lowercase mit `-`/`_`; Contract-Dateien `*.odcs.yaml`; Produkt-ID `lhm:<domain>:<port>:<produkt>`. GitLab-Portierung später ohne Layout-Änderung.
+**ODCS-v3-Kernfelder:** `apiVersion: v3.1.0`, `kind`, `id`, `version`, `status`, `name`, `domain`, `description{purpose,usage,limitations}`, `servers[]`, `schema[].properties[]` (`logicalType`, `physicalType`, `required`, `examples`, **`quality[]`**), `slaProperties[]`, `customProperties[]`.
+**LHM-`customProperties`:** `classification`, `contract_status`, `personal_data`, `legal_basis`, `retention_period`, `dpo_notified`, `owner_approval`, `dpo_approval`, DCAT-Block (`license`, `spatial`, `accrual_periodicity`, `open_data_candidate`, `govdata_category`).
 
 ---
 
-## ODCS-Contract (v3) — Anatomie + LHM-Erweiterungen
+## Profiler: Contract aus Daten (Kern der Erleichterung)
 
-Pro Port ein Contract. Genutzte ODCS-v3-Felder: `apiVersion: v3.1.0`, `kind: DataContract`, `id`, `version`, `status`, `name`, `domain`, `tenant`, `description{purpose,usage,limitations}`, `servers[]`, `schema[]` (mit `properties[]`: `logicalType`, `physicalType`, `required`, `description`, `examples`, **`quality[]`**), `slaProperties[]`, `team[]`, `customProperties[]`.
+`profile_source.py` liest die Quelle (Demo: CSV File-Export) und erzeugt einen **Draft-ODCS**:
+- Spaltennamen, abgeleitete `logicalType`/`physicalType`, Nullable (aus Null-Quote)
+- **Kandidaten-Quality-Regeln**: not-null (0 Nulls beobachtet), Wertebereiche (beobachtete min/max), Uniqueness (distinct==rows), abgeleitete Konsistenz (`gesamt = richtung_1 + richtung_2`)
+- Freshness via `max(datum)`
 
-**LHM-`customProperties`** (über ODCS-Kern hinaus): `classification`, `contract_status`, `personal_data` (dsgvo ja/nein), `legal_basis` (z.B. Art. 6(1)(e) DSGVO), `retention_period` (z.B. `P3Y`), `dpo_notified`, `owner_approval`, `dpo_approval`, sowie DCAT-Block (`license`, `spatial`, `accrual_periodicity`, `open_data_candidate`, `govdata_category`).
-
-**Quality (deklarativ)** im `schema[].properties[].quality` bzw. objektweit, z.B.:
-- `gesamt = richtung_1 + richtung_2` (Konsistenz)
-- `gesamt >= 0`, `bewoelkung` in [0,100] (Wertebereich)
-- `datum` not null & eindeutig je Zählstelle (Vollständigkeit/Unik)
+Der Mensch bestätigt/ergänzt nur Governance-Felder (ServiceNow). `intake_to_odcs.py` merged Draft-Schema + Governance → finaler Contract.
 
 ---
 
-## Intake: ServiceNow-Formular → Pipeline
+## Pipeline + Quality Gate
 
-1. **ServiceNow-Katalog-Item** (`intake/servicenow-catalog-item.md` dokumentiert das Feld-Mapping): strukturierte Felder (Domäne/Referat, Produktname, Owner, Klassifizierung, Aktualisierungsrhythmus, Spalten/Typen, Rechtsgrundlage, `dsgvo` ja/nein, Open-Data ja/nein, …). Erreicht alle Fachbereiche, SSO, keine Git-Kenntnis nötig.
-2. ServiceNow sendet bei Submit ein **`intake.json`** (validiert gegen `schemas/intake.schema.json`) per **REST** an die Pipeline (Hackathon: `repository_dispatch` / Issue-Form-Fallback liefert dasselbe JSON).
-3. **`intake-to-contract.yml`** ruft `intake_to_odcs.py`: erzeugt `data-product.yaml` + `*.odcs.yaml` unter `domains/<referat>/…`, öffnet **PR** und setzt Labels (`needs-owner-approval`, bei `dsgvo: ja` zusätzlich `needs-dsb-approval`).
+- **Ingestion (dlt):** `pipeline/ingest/load_csv.py` lädt das CSV in eine DuckDB-`raw`-Tabelle (Materialisierung des **Input-Ports**).
+- **Transformation (dbt-duckdb):** `models/staging` (Typcasts, `min-temp`→`min_temp`, Komma→Punkt) → `models/mart/radverkehr_tageswerte` (**Output-Port**). `schema.yml` enthält dbt-Tests (not_null, unique, accepted_range).
+- **Quality Gate:** `run_quality.py` führt die **Contract-`quality`-Regeln** gegen die materialisierten DuckDB-Tabellen aus; zusätzlich `dbt test`. Verstoß → roter Check, blockt Merge. (LHM-Ziel: identische Regeln laufen produktiv auf Postgres via GitLab Runner.)
 
-> Fallback/Demo ohne ServiceNow-Instanz: GitHub **Issue Form** erzeugt identisches `intake.json` → gleicher Pfad.
-
----
-
-## Freigabe (ServiceNow real, Git simuliert)
-
-**Ziel-Architektur:** ServiceNow-Flow nach PR-Erstellung — Stufe 1 **Dateneigner** genehmigt; wenn `personal_data: true`, Stufe 2 **DSB**. Genehmigung schreibt `owner_approval`/`dpo_approval` in den Contract zurück bzw. gibt den Merge frei.
-
-**Hackathon-Simulation:** `approval-gate.yml` prüft am PR die Labels `owner-approved` (immer nötig) und `dsb-approved` (nur wenn Contract `personal_data: true`). Reviewer setzen die Labels stellvertretend für die ServiceNow-Genehmiger → grüner Gate-Check als Merge-Voraussetzung. So ist der reale Workflow 1:1 nachvollziehbar, ohne ServiceNow-Instanz.
-
----
-
-## Quality Gate (leichtgewichtig Python/SQL)
-
-`run_quality.py` liest die `quality`-Regeln aus dem Contract und führt sie mit **duckdb/pandas** gegen eine Stichprobe der echten opendata-CSV aus (im Repo als kleines Sample oder per Download im CI). Verstoß → roter Check, blockt Merge. `quality-gate.yml` triggert das auf jeden PR, der Contracts ändert. (Ziel-Architektur: dieselben Regeln laufen produktiv in dbt/Soda — der Contract bleibt Single Source of Truth.)
+**Tooling (bewusst schlank):** `dlt`, `duckdb`, `dbt-duckdb`, `pyyaml`, `jsonschema`, `pandas`, `requests` (CKAN).
 
 ---
 
 ## CKAN-Integration (lokal, Docker)
 
-Nach Merge auf `main` startet `publish-ckan-catalog.yml`:
-1. `ckan/docker-compose.yml` bringt eine lokale CKAN-Instanz hoch (Demo).
-2. `ckan_publish.py` mappt den **ODCS-Contract → CKAN-Dataset** (Titel, Notes, Owner, Tags) + **DCAT-AP.de-Extras** (`license_id`, `spatial_uri`, `frequency`, `theme`) und LHM-Felder (`classification`, `contract_status`); ruft die **CKAN-API** (`package_create`/`package_update`). Nur Produkte mit `open_data_candidate: true` werden publiziert.
-3. `render_catalog.py` erzeugt/aktualisiert die Markdown-Katalogseite je Datenprodukt.
+Nach Merge: `publish-ckan-catalog.yml` → CKAN via `ckan/docker-compose.yml`; `ckan_publish.py` mappt ODCS → CKAN-Dataset + DCAT-AP.de-Extras (`license_id`, `spatial_uri`, `frequency`, `theme`) + LHM-Felder; `package_create`/`package_update`; nur `open_data_candidate: true`. `render_catalog.py` aktualisiert die Markdown-Katalogseite.
 
 ---
 
 ## Team-Aufteilung & 12-Stunden-Timeline (3 Personen)
 
-**Stunde 0–1 — Kickoff (alle):** Konventionen fix, ODCS-Schema + Domänenstruktur (`mobilitaetsreferat`, `ewo`) anlegen, `intake.schema.json`-Felder gemeinsam festlegen (Schnittstelle zwischen allen Streams). Danach Split.
+**Stunde 0–1 — Kickoff (alle):** Konventionen, Domänenstruktur (`mobilitaetsreferat`/`ewo`), gemeinsam `intake.schema.json` **und** das Contract-Schema-Vokabular (Profiler↔Governance-Merge) fixieren. DuckDB/dbt-Projektgerüst anlegen. Danach Split.
 
 | Workstream | Verantwortung | Kern-Deliverables |
 | --- | --- | --- |
-| **A — Domänen & Contracts** | `domains/`-Struktur, `domain.yaml`, ODCS Input+Output für `radverkehr` inkl. `quality`-Block, `templates`, `schemas/lhm-rules.md`, `docs/architecture.md` + `governance.md` | voll ausgearbeitetes Beispielprodukt + Regelwerk |
-| **B — Intake & Freigabe** | `intake.schema.json`, `intake/servicenow-catalog-item.md`, `intake_to_odcs.py`, `intake-to-contract.yml`, `approval-gate.yml` (Label-Simulation), Issue-Form-Fallback | funktionierender no-code Intake + Freigabe-Gate |
-| **C — Quality & CKAN** | `validate_odcs.py` + `validate-contracts.yml`, `run_quality.py` + `quality-gate.yml`, `ckan_publish.py` + `ckan/docker-compose.yml` + `publish-ckan-catalog.yml`, `render_catalog.py` | grüne/rote Gates + CKAN-Demo + Katalog |
+| **A — Domänen, Contracts & Profiler** | `domains/`-Struktur, `domain.yaml`, ODCS Input+Output (`radverkehr`) inkl. `quality`-Block, `templates`, `schemas/lhm-rules.md`, **`profile_source.py`** (CSV→Draft-ODCS), `docs/architecture.md`+`governance.md` | Beispielprodukt + Profiler + Regelwerk |
+| **B — Intake, Governance, Validierung & Katalog** | `intake.schema.json`, `intake/servicenow-catalog-item.md` (+Topologie), `intake_to_odcs.py` (Merge), `intake-to-contract.yml`, `approval-gate.yml`, Issue-Form-Fallback, `validate_odcs.py`+`validate-contracts.yml`, `ckan_publish.py`+`publish-ckan-catalog.yml`+`render_catalog.py` | Intake→PR→Freigabe→CKAN/Katalog |
+| **C — Data Pipeline & Quality** | `pipeline/ingest/load_csv.py` (dlt→DuckDB), `pipeline/dbt/` (staging+mart+Tests), `run_quality.py`, `pipeline-and-quality.yml`, `ckan/docker-compose.yml` | lauffähige Pipeline + Quality-Gate + CKAN-Container |
 
 **Meilensteine:**
-- **h3** — A: Beispiel-Contract + Quality-Regeln stehen; B: `intake.schema.json` final + Skript erzeugt YAML lokal; C: ODCS-Validator + erster DQ-Check lokal grün.
-- **h6** — Integration 1: PR aus `intake.json` wird erzeugt; validate- + quality-Gate greifen im PR.
-- **h9** — Integration 2: approval-gate über Labels; lokale CKAN nimmt `package_create` an.
-- **h11** — End-to-End: Formular-JSON → PR → Gates grün → Freigabe-Labels → Merge → CKAN aktualisiert → Katalogseite gerendert.
-- **h11–12** — Demo-Skript, README-Diagramm, `docs/`-Portierungsnotizen GitLab/ServiceNow.
+- **h3** — A: Profiler erzeugt Draft-ODCS aus CSV; B: intake.schema + Merge erzeugt Contract lokal; C: dlt lädt CSV→DuckDB, dbt-staging läuft.
+- **h6** — Integration 1: PR aus `intake.json`; validate-Gate grün; dbt-mart `radverkehr_tageswerte` existiert.
+- **h9** — Integration 2: quality-gate (Contract-Regeln + dbt-Tests) im PR; approval-gate über Labels; lokale CKAN nimmt `package_create`.
+- **h11** — End-to-End: Quelle → Profiler+Formular → PR → alle Gates grün → Freigabe → Merge → CKAN aktualisiert → Katalog gerendert.
+- **h11–12** — Demo-Skript, README-Diagramm, GitLab/ServiceNow-Portierungsnotizen.
+
+**Descoping-Reihenfolge (falls Zeit knapp — End-to-End-Demo schützen):**
+1. CKAN real → durch Mock/Log ersetzen (Mapping bleibt sichtbar).
+2. dbt-Tests → nur Contract-`run_quality` behalten.
+3. Profiler-Tiefe reduzieren (nur Spalten/Typen, Quality-Regeln manuell).
+4. ServiceNow-Doku knapp halten (Topologie-Diagramm reicht).
+Der **rote Faden Quelle→Contract→Pipeline→Merge→Katalog** wird nie geopfert.
 
 ---
 
-## GitLab-/LHM-Portabilität (explizit dokumentieren)
+## GitLab-/LHM-Portabilität
 
 | Hackathon (GitHub) | LHM-Ziel |
 | --- | --- |
-| GitHub Actions (`.github/workflows`) | `.gitlab-ci.yml`-Jobs |
-| Intake-JSON via Issue-Form/`repository_dispatch` | **ServiceNow-Katalog-Item** → REST-Trigger der Pipeline |
-| Freigabe via PR-Labels | **ServiceNow-Approval-Flow** (Dateneigner, DSB) |
-| Quality in Python/duckdb im CI | gleiche Regeln in **dbt/Soda** produktiv |
+| GitHub Actions | `.gitlab-ci.yml` auf **GitLab Runnern** |
+| `repository_dispatch`/Issue-Form | **ServiceNow** → GitLab Pipeline-Trigger → CI öffnet MR |
+| PR-Labels für Freigabe | **ServiceNow-Approval** (Dateneigner, DSB) |
+| dlt → **DuckDB**, dbt-duckdb | dlt → **PostgreSQL**, dbt (gleiche Modelle/Tests) |
+| CSV File-Export-Connector | zusätzlich `reporting_db`/`eai`-Connectoren |
 | lokale CKAN (Docker) | **LHM-CKAN** + `ckanext-dcat` → GovData |
-| `gh pr create` | `glab`/GitLab-API |
 
-Repo-Layout, ODCS-Contracts und Skripte sind CI-agnostisch — Portierungsaufwand nur in Workflow-Definitionen und Konnektoren.
+Repo-Layout, ODCS-Contracts, dbt-Modelle und Skripte sind weitgehend CI-agnostisch — Portierungsaufwand v.a. in Workflow-Definitionen, Connectoren und Warehouse-Target.
 
 ---
 
 ## Verification (End-to-End-Demo)
 
-1. **Intake:** `intake/example-intake.json` (bzw. Issue-Form) lösen → `intake-to-contract.yml` öffnet PR mit korrektem `*.odcs.yaml` + Labels.
-2. **Negativtests:** (a) Contract mit `open_data_candidate: true` ohne `license` → `validate-contracts` rot. (b) Sample mit `gesamt ≠ richtung_1+richtung_2` → `quality-gate` rot. (c) `personal_data: true` ohne `dsb-approved` → `approval-gate` rot.
-3. **Positivlauf:** Felder/Labels korrigieren → alle Gates grün → Merge.
-4. **CKAN:** `publish-ckan-catalog` pusht Metadaten in lokale CKAN → Dataset sichtbar/aktualisiert; Katalogseite im Repo erneuert.
-
-Damit ist der komplette Contract-as-Code-Lebenszyklus inkl. Freigabe, Quality und CKAN ohne manuelles YAML demonstriert.
+1. **Quelle→Draft:** `profile_source.py` auf CSV → Draft-ODCS mit Schema + Kandidatenregeln.
+2. **Intake:** `example-intake.json` (Governance) → `intake-to-contract.yml` öffnet PR mit fertigem Contract + Labels.
+3. **Negativtests:** (a) `open_data_candidate: true` ohne `license` → validate rot. (b) manipulierte Daten `gesamt ≠ richtung_1+richtung_2` → quality-gate rot. (c) `personal_data: true` ohne `dsb-approved` → approval-gate rot.
+4. **Positivlauf:** korrigieren → dlt+dbt bauen `radverkehr_tageswerte`, alle Gates grün, Labels gesetzt → Merge.
+5. **CKAN:** `publish-ckan-catalog` pusht Metadaten in lokale CKAN; Katalogseite aktualisiert.
 
 ---
 
 ## Bewusst außerhalb des Scopes (12 h)
 
-- Produktive dbt/dlt-Pipelines, PostgreSQL, Keycloak-Access-Control (nur referenziert).
-- Echte ServiceNow-Instanz (Workflow dokumentiert + per Labels simuliert).
-- Echte GovData-Publikation (lokale CKAN als Stellvertreter).
-- MUCGPT-Intake (geprüft, zugunsten ServiceNow zurückgestellt; Architektur bleibt andockbar).
+- Weitere Connectoren (reporting_db/oracle/EAI) — Abstraktion vorbereitet, nur CSV implementiert.
+- Echte ServiceNow-Instanz (Topologie dokumentiert, per Labels/Dispatch simuliert).
+- Echte GovData-Publikation (lokale CKAN als Stellvertreter), Keycloak-Access-Control.
+- MUCGPT-Intake (zugunsten ServiceNow zurückgestellt; andockbar).
