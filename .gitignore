@@ -10,6 +10,6 @@ pipeline/dbt/dbt_packages/
 pipeline/dbt/logs/
 .dlt/
 
-# generierte Output-Port-Artefakte
-output/
+# generierte Output-Port-Artefakte (nur Repo-Root, nicht contracts/output/)
+/output/
 access-policy.json

@@ -2,7 +2,7 @@
 
 ## Context
 
-Die Landeshauptstadt München (DAICE + aufzubauendes Data Office) baut ein **Data Mesh**, in dem **Data Contracts die Governance-Grundlage** bilden. Datendomänen sind organisatorisch die **Referate**. Phase-1-Pilot: **EWO** (Produzent, Adressdaten) → **Mobilitätsreferat** (Konsument). Vorhandener LHM-Werkzeugkasten: R, SPSS, Python, **GitLab Runners**, **dbt**, Node-RED, VS Code, **FME**; Daten liegen in Fachverfahren/DBs (Postgres, Oracle), angebunden über Reporting-DB, manuellen File-Export, Laufwerke oder EAI-Schnittstelle. Ziel-Stack: PostgreSQL, dbt, dlt, Keycloak, CKAN + `ckanext-dcat` → GovData. Rollen: **Datenverantwortliche/Dateneigner (Data Owner)**, **Data Steward**, **Datenschutzbeauftragte (DSB)**.
+Die Landeshauptstadt München (DAICE + aufzubauendes Data Office) baut ein **Data Mesh**, in dem **Data Contracts die Governance-Grundlage** bilden. Datendomänen sind organisatorisch die **Referate**. Phase-1-Pilot: **EWO / Kreisverwaltungsreferat (KVR)** (Produzent, Adressdaten) → **Mobilitätsreferat** (Konsument). Vorhandener LHM-Werkzeugkasten: R, SPSS, Python, **GitLab Runners**, **dbt**, Node-RED, VS Code, **FME**; Daten liegen in Fachverfahren/DBs (Postgres, Oracle), angebunden über Reporting-DB, manuellen File-Export, Laufwerke oder EAI-Schnittstelle. Ziel-Stack: PostgreSQL, dbt, dlt, Keycloak, CKAN + `ckanext-dcat` → GovData. Rollen: **Datenverantwortliche/Dateneigner (Data Owner)**, **Data Steward**, **Datenschutzbeauftragte (DSB)**.
 
 Ziel des Hackathons (3 Personen, 12 h): In einem **GitHub-Repo** (`riolties/data-contracts-lhm`) den **kompletten Lebenszyklus eines Datenprodukts als Code** zeigen — von der **Datenquelle** über **automatisch abgeleitete Contracts**, **Ingestion (dlt) + Transformation (dbt)**, **Quality Gate** und **Freigabe** bis **CKAN-Katalog** — 1:1 portierbar auf **GitLab + ServiceNow**.
 
@@ -83,9 +83,10 @@ data-contracts-lhm/
 │   │       │   ├── input/opendata-raddaten.input.odcs.yaml
 │   │       │   └── output/radverkehr-tageswerte.output.odcs.yaml
 │   │       └── README.md                # auto-generierte Katalogseite
-│   └── ewo/                             # Pilot-Produzent (Platzhalter)
-│       ├── domain.yaml
-│       └── data-products/.gitkeep
+│   ├── kreisverwaltungsreferat/        # Pilot-Produzent KVR (Platzhalter)
+│   │   ├── domain.yaml
+│   │   └── data-products/.gitkeep
+│   └── README.md                       # Domänen-Katalog (alle 15 Referate)
 ├── intake/          servicenow-catalog-item.md · example-intake.json
 ├── pipeline/
 │   ├── ingest/      load_csv.py         # dlt: CSV → DuckDB (raw)
@@ -138,7 +139,7 @@ Nach Merge: `publish-ckan-catalog.yml` → CKAN via `ckan/docker-compose.yml`; `
 
 ## Team-Aufteilung & 12-Stunden-Timeline (3 Personen)
 
-**Stunde 0–1 — Kickoff (alle):** Konventionen, Domänenstruktur (`mobilitaetsreferat`/`ewo`), gemeinsam `intake.schema.json` **und** das Contract-Schema-Vokabular (Profiler↔Governance-Merge) fixieren. DuckDB/dbt-Projektgerüst anlegen. Danach Split.
+**Stunde 0–1 — Kickoff (alle):** Konventionen, Domänenstruktur (`mobilitaetsreferat`/`kreisverwaltungsreferat`), gemeinsam `intake.schema.json` **und** das Contract-Schema-Vokabular (Profiler↔Governance-Merge) fixieren. DuckDB/dbt-Projektgerüst anlegen. Danach Split.
 
 | Workstream | Verantwortung | Kern-Deliverables |
 | --- | --- | --- |

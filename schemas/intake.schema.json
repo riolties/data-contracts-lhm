@@ -10,7 +10,7 @@
     "domain": {
       "type": "string",
       "description": "Datendomäne = Referat (lowercase slug).",
-      "examples": ["mobilitaetsreferat", "ewo"]
+      "examples": ["mobilitaetsreferat", "kreisverwaltungsreferat"]
     },
     "product": {
       "type": "string",
