@@ -1,0 +1,22 @@
+id: lhm:mobilitaetsreferat:radverkehr_demo
+name: radverkehr_demo
+title: Radverkehr Tageswerte München (E2E-Demo)
+domain: mobilitaetsreferat
+status: active
+source:
+  type: file_export
+  location: data/sample_radverkehr_tageswerte_2025_01.csv
+ports:
+  input:
+  - id: radverkehr_demo-input
+    contract: contracts/input/radverkehr_demo.input.odcs.yaml
+    description: Rohdaten Radverkehr Tageswerte München (E2E-Demo).
+  output:
+  - id: radverkehr_demo-output
+    contract: contracts/output/radverkehr_demo.output.odcs.yaml
+    description: Bereinigte Daten; dbt-Mart 'radverkehr_demo_tageswerte'.
+    serving:
+    - type: db_view
+      object: radverkehr_demo_tageswerte
+    - type: file_export
+      format: parquet
