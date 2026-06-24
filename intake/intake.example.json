@@ -22,26 +22,5 @@
   "source": {
     "type": "file_export",
     "location": "data/sample_radverkehr_tageswerte_2025_01.csv"
-  },
-  "columns": [
-    {"name": "datum", "logical_type": "date", "physical_type": "string", "required": true, "description": "Zähltag.", "classification": "public"},
-    {"name": "uhrzeit_start", "logical_type": "string", "physical_type": "string", "description": "Beginn Aggregationsfenster."},
-    {"name": "uhrzeit_ende", "logical_type": "string", "physical_type": "string", "description": "Ende Aggregationsfenster."},
-    {"name": "zaehlstelle", "logical_type": "string", "physical_type": "string", "required": true, "description": "Name der Zählstelle."},
-    {"name": "richtung_1", "logical_type": "integer", "physical_type": "string", "description": "Räder Richtung 1."},
-    {"name": "richtung_2", "logical_type": "integer", "physical_type": "string", "description": "Räder Richtung 2."},
-    {"name": "gesamt", "logical_type": "integer", "physical_type": "string", "required": true, "description": "Summe beider Richtungen."},
-    {"name": "min-temp", "logical_type": "number", "physical_type": "string", "description": "Minimaltemperatur °C."},
-    {"name": "max-temp", "logical_type": "number", "physical_type": "string", "description": "Maximaltemperatur °C."},
-    {"name": "niederschlag", "logical_type": "number", "physical_type": "string", "description": "Niederschlag mm."},
-    {"name": "bewoelkung", "logical_type": "integer", "physical_type": "string", "description": "Bewölkung %."},
-    {"name": "sonnenstunden", "logical_type": "number", "physical_type": "string", "description": "Sonnenstunden."}
-  ],
-  "quality_rules": [
-    {"rule": "not_null", "column": "datum"},
-    {"rule": "not_null", "column": "gesamt"},
-    {"rule": "range", "column": "bewoelkung", "min": 0, "max": 100},
-    {"rule": "range", "column": "gesamt", "min": 0, "max": 1000000},
-    {"rule": "expression", "expr": "gesamt = richtung_1 + richtung_2"}
-  ]
+  }
 }

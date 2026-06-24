@@ -31,8 +31,9 @@ Quelle: CSV File-Export aus Fachverfahren (Raddaten)
    │
    ▼
 ServiceNow-Katalogformular — Datenverantwortliche/r füllt manuell aus:
-   Spalten + Typen, Owner, Klassifizierung, Rechtsgrundlage,
+   CSV-Pfad, Owner, Klassifizierung, Rechtsgrundlage,
    DSGVO-Flag, Open-Data, Beschreibungen
+   (keine Spalten — kommen automatisch aus der CSV)
    │
    ▼  FREIGABE IN ServiceNow — vor jeder Datenverarbeitung
    Stufe 1: Dateneigner (fachlich/rechtlich)
@@ -40,7 +41,9 @@ ServiceNow-Katalogformular — Datenverantwortliche/r füllt manuell aus:
    │
    │  ERST NACH FREIGABE: ServiceNow triggert GitLab einmal
    ▼
-intake_to_odcs.py  →  PR/MR: data-product.yaml + *.odcs.yaml
+1. profile_source.py liest CSV → Spalten/Typen/Quality-Kandidaten
+2. intake_to_odcs.py merged Profiler-Output + Governance → Contract
+   →  PR/MR: data-product.yaml + *.odcs.yaml
    │
    ┌─────────────────────────────────────┬───────────────────────────────────┐
    ▼                                     ▼
@@ -110,14 +113,14 @@ data-contracts-lhm/
 
 ---
 
-## Profiler: Daten verstehen (Hilfsmittel, kein Pipeline-Schritt)
+## Profiler: Schritt 1 der Post-Freigabe-Pipeline
 
-`profile_source.py` liest die Quelle (Demo: CSV File-Export) und erzeugt ein **Profiling-Protokoll**:
+`profile_source.py` ist der **erste Schritt** nach dem GitLab-Trigger. Es liest die CSV aus `source.location` (die der Datenverantwortliche im SN-Formular angegeben hat) und liefert:
 - Spaltennamen, abgeleitete `logicalType`/`physicalType`, Nullable (aus Null-Quote)
 - **Kandidaten-Quality-Regeln**: not-null (0 Nulls beobachtet), Wertebereiche (beobachtete min/max), Uniqueness (distinct==rows), Konsistenz (`gesamt = richtung_1 + richtung_2`)
 - Freshness via `max(datum)`
 
-Der Profiler läuft **außerhalb der Automatisierung** — der Datenverantwortliche kann ihn lokal nutzen, um das SN-Formular informiert auszufüllen (Spaltentypen, sinnvolle Quality-Schwellen). Die eigentliche technische Verifikation nach Freigabe übernimmt das **Quality Gate** (`run_quality.py` + dbt-Tests gegen die materialisierten Daten). `intake_to_odcs.py` übersetzt das ausgefüllte `intake.json` direkt in den finalen Contract — kein Draft-Merge.
+`intake_to_odcs.py` merged den Profiler-Output mit den Governance-Feldern aus `intake.json` → finaler Contract. Der Datenverantwortliche tippt **keine Spalten** ins SN-Formular — die kommen vollautomatisch aus der CSV. Für andere `source.type`s (reporting_db, eai) können Spalten optional manuell in `intake.json` mitgegeben werden.
 
 ---
 
@@ -143,8 +146,8 @@ Nach Merge: `publish-ckan-catalog.yml` → CKAN via `ckan/docker-compose.yml`; `
 
 | Workstream | Verantwortung | Kern-Deliverables |
 | --- | --- | --- |
-| **A — Domänen, Contracts & Profiler** | `domains/`-Struktur, `domain.yaml`, ODCS Input+Output (`radverkehr`) inkl. `quality`-Block, `templates`, `schemas/lhm-rules.md`, **`profile_source.py`** (CSV→Profiling-Protokoll, Hilfsmittel), `docs/architecture.md`+`governance.md` | Beispielprodukt + Profiler + Regelwerk |
-| **B — Intake, Governance, Validierung & Katalog** | `intake.schema.json`, `intake/servicenow-catalog-item.md` (+Topologie), `intake_to_odcs.py` (intake.json→Contract, kein Profiler-Merge), `intake-to-contract.yml` (getriggert nach SN-Freigabe), `approval-gate.yml` (technisches Sicherheitsnetz), Issue-Form-Fallback, `validate_odcs.py`+`validate-contracts.yml`, `ckan_publish.py`+`publish-ckan-catalog.yml`+`render_catalog.py` | Intake→SN-Freigabe→Trigger→PR→Gates→CKAN/Katalog |
+| **A — Domänen, Contracts & Profiler** | `domains/`-Struktur, `domain.yaml`, ODCS Input+Output (`radverkehr`) inkl. `quality`-Block, `templates`, `schemas/lhm-rules.md`, **`profile_source.py`** (Schritt 1 der Pipeline: CSV→Spalten/Typen/Quality-Kandidaten), `docs/architecture.md`+`governance.md` | Beispielprodukt + Profiler + Regelwerk |
+| **B — Intake, Governance, Validierung & Katalog** | `intake.schema.json` (nur Governance, keine Spalten), `intake/servicenow-catalog-item.md` (+Topologie), `intake_to_odcs.py` (merged Profiler-Output + Governance→Contract), `intake-to-contract.yml` (getriggert nach SN-Freigabe), `approval-gate.yml` (technisches Sicherheitsnetz), Issue-Form-Fallback, `validate_odcs.py`+`validate-contracts.yml`, `ckan_publish.py`+`publish-ckan-catalog.yml`+`render_catalog.py` | Intake→SN-Freigabe→Trigger→Profiler+Contract→Gates→CKAN/Katalog |
 | **C — Data Pipeline, Quality & Output Port** | `pipeline/ingest/load_csv.py` (dlt→DuckDB), `pipeline/dbt/` (staging+mart+Tests), `run_quality.py`, `pipeline-and-quality.yml`, **Output Port**: View `radverkehr_tageswerte` + Parquet/CSV-Export unter `output/`, **`apply_access.py`** (Contract→GRANTs/`access-policy.json`, s. [Access-Doc](access-and-output-port.md)), `ckan/docker-compose.yml` | Pipeline + Quality-Gate + bereitgestellter Output Port + Zugriffspolicy |
 
 **Meilensteine:**
