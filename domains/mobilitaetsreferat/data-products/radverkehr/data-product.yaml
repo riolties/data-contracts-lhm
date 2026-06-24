@@ -15,11 +15,11 @@ source:
 ports:
   input:
     - id: opendata-raddaten
-      contract: contracts/input/opendata-raddaten.input.odcs.yaml   # TODO: Workstream A
+      contract: contracts/input/opendata-raddaten.input.odcs.yaml
       description: Rohdaten Raddauerzählstellen (opendata München).
   output:
     - id: radverkehr-tageswerte
-      contract: contracts/output/radverkehr-tageswerte.output.odcs.yaml  # TODO: Workstream A
+      contract: contracts/output/radverkehr-tageswerte.output.odcs.yaml
       description: Bereinigte Tageswerte + Wetter; dbt-Mart 'radverkehr_tageswerte'.
       serving:
         - type: db_view        # stabile View im Hub (DuckDB-Demo / Postgres-Ziel)

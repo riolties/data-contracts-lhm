@@ -1,0 +1,170 @@
+# ODCS-v3-Contract — OUTPUT PORT (konsumierbarer dbt-Mart)
+# Stabiles, bereinigtes Konsum-Interface des Datenprodukts radverkehr.
+# Materialisiert als View 'radverkehr_tageswerte' (Pipeline: Workstream C).
+version: 1.0.0
+apiVersion: v3.1.0
+kind: DataContract
+id: lhm:mobilitaetsreferat:output:radverkehr
+status: active
+name: Radverkehr Tageswerte München
+domain: mobilitaetsreferat
+
+description:
+  purpose: Bereinigte tägliche Radverkehrszählungen je Zählstelle inkl. Wetterkontext — stabile Konsumschnittstelle.
+  usage: Konsumierbar als View radverkehr_tageswerte (DuckDB-Demo / Postgres-Ziel) sowie Parquet/CSV-Export. Eine Zeile je Zählstelle und Tag.
+  limitations: Zählintervall ist stets der ganze Tag — die konstanten Rohspalten uhrzeit_start/uhrzeit_ende werden nicht durchgereicht. Wetterwerte sind Begleitdaten (nicht qualitätsgesichert durch das Mobilitätsreferat).
+
+servers:
+  - server: hub
+    type: duckdb
+    description: Demo-Warehouse (warehouse.duckdb); Ziel später Postgres-Hub.
+    database: warehouse
+    schema: main
+    customProperties:
+      - { property: path, value: pipeline/dbt/warehouse.duckdb }
+      - { property: object, value: radverkehr_tageswerte }
+
+schema:
+  - name: radverkehr_tageswerte
+    logicalType: object
+    physicalType: view
+    physicalName: radverkehr_tageswerte
+    dataGranularityDescription: Eine Zeile je Zählstelle und Tag (Primärschlüssel datum + zaehlstelle).
+    properties:
+      - name: datum
+        logicalType: date
+        physicalType: DATE
+        required: true
+        primaryKey: true
+        primaryKeyPosition: 1
+        description: Zähltag (normalisiert nach ISO YYYY-MM-DD).
+        examples: ["2025-01-01"]
+      - name: zaehlstelle
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+        primaryKeyPosition: 2
+        description: Name der Dauerzählstelle.
+        examples: ["Arnulf"]
+      - name: richtung_1
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+        description: Gezählte Radfahrten in Richtung 1.
+        examples: ["235"]
+      - name: richtung_2
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+        description: Gezählte Radfahrten in Richtung 2.
+        examples: ["19"]
+      - name: gesamt
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+        description: Gesamtzahl Radfahrten am Tag (= richtung_1 + richtung_2).
+        examples: ["254"]
+      - name: min_temp
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+        description: Tagestiefsttemperatur in °C (Begleitwetter).
+        examples: ["-3.2"]
+      - name: max_temp
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+        description: Tageshöchsttemperatur in °C (Begleitwetter).
+        examples: ["12.7"]
+      - name: niederschlag
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+        description: Niederschlagsmenge in mm (Begleitwetter).
+        examples: ["0"]
+      - name: bewoelkung
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+        description: Bewölkungsgrad in Prozent (0–100, Begleitwetter).
+        examples: ["70"]
+      - name: sonnenstunden
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+        description: Sonnenscheindauer in Stunden (Begleitwetter).
+        examples: ["8.1"]
+    # Quality-Konvention (siehe docs/architecture.md): ODCS-Typ 'text' (schema-valide),
+    # ausführbare Regel in customProperties (engine + Parameter). run_quality.py (C)
+    # liest engine/query/column/expect und prüft gegen die materialisierten Daten.
+    quality:
+      - type: text
+        name: richtungssumme
+        description: Richtungssumme konsistent — gesamt = richtung_1 + richtung_2.
+        dimension: accuracy
+        severity: error
+        customProperties:
+          - { property: engine, value: sql }
+          - { property: query, value: "SELECT count(*) FROM radverkehr_tageswerte WHERE gesamt <> richtung_1 + richtung_2" }
+          - { property: expect, value: 0 }
+      - type: text
+        name: nicht_negativ
+        description: Zählwerte sind nicht-negativ.
+        dimension: accuracy
+        severity: error
+        customProperties:
+          - { property: engine, value: sql }
+          - { property: query, value: "SELECT count(*) FROM radverkehr_tageswerte WHERE richtung_1 < 0 OR richtung_2 < 0 OR gesamt < 0" }
+          - { property: expect, value: 0 }
+      - type: text
+        name: bewoelkung_range
+        description: Bewölkung im gültigen Bereich 0–100 %.
+        dimension: accuracy
+        severity: warning
+        customProperties:
+          - { property: engine, value: range }
+          - { property: column, value: bewoelkung }
+          - { property: min, value: 0 }
+          - { property: max, value: 100 }
+      - type: text
+        name: pk_eindeutig
+        description: Primärschlüssel (datum, zaehlstelle) ist eindeutig.
+        dimension: uniqueness
+        severity: error
+        customProperties:
+          - { property: engine, value: unique }
+          - { property: columns, value: [datum, zaehlstelle] }
+      - type: text
+        name: gesamt_not_null
+        description: Pflichtfeld gesamt ohne Null.
+        dimension: completeness
+        severity: error
+        customProperties:
+          - { property: engine, value: not_null }
+          - { property: column, value: gesamt }
+
+slaProperties:
+  - property: frequency
+    value: 1
+    unit: d
+    description: Tägliche Aktualisierung des Marts.
+  - property: latency
+    value: 1
+    unit: d
+    description: Output spätestens einen Tag nach Quell-Stand.
+  - property: retention
+    value: 5
+    unit: y
+    description: Historie 5 Jahre vorgehalten.
+
+# --- LHM-Governance (customProperties) — siehe schemas/lhm-rules.md ---
+customProperties:
+  - { property: classification, value: public }
+  - { property: contract_status, value: active }
+  - { property: personal_data, value: false }
+  - { property: open_data_candidate, value: true }
+  - { property: license, value: "https://www.govdata.de/dl-de/by-2-0" }
+  - { property: spatial, value: "https://sws.geonames.org/2867714/" }
+  - { property: accrual_periodicity, value: "http://publications.europa.eu/resource/authority/frequency/DAILY" }
+  - { property: govdata_category, value: ["http://publications.europa.eu/resource/authority/data-theme/TRAN"] }
