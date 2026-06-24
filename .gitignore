@@ -8,8 +8,10 @@ __pycache__/
 pipeline/dbt/target/
 pipeline/dbt/dbt_packages/
 pipeline/dbt/logs/
+pipeline/dbt/.user.yml
 .dlt/
 
 # generierte Output-Port-Artefakte (nur Repo-Root, nicht contracts/output/)
 /output/
 access-policy.json
+grants.sql

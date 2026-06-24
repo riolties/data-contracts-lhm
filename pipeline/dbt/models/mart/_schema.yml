@@ -4,13 +4,26 @@ models:
   - name: radverkehr_tageswerte
     description: >-
       Output Port des Datenprodukts radverkehr — Tageswerte + Wetter je Zählstelle.
-      dbt-Tests spiegeln die Quality-Regeln aus dem Output-Contract (run_quality.py).
-    # TODO(Workstream C): Tests an Output-Contract angleichen.
+      dbt-Tests spiegeln die Quality-Regeln aus dem Output-Contract
+      (radverkehr-tageswerte.output.odcs.yaml); die maschinell ausführbaren
+      Contract-Regeln laufen zusätzlich über scripts/run_quality.py gegen die
+      materialisierten Daten.
     columns:
       - name: datum
+        description: Zähltag (ISO YYYY-MM-DD), Teil des Primärschlüssels.
         tests: [not_null]
       - name: zaehlstelle
+        description: Name der Dauerzählstelle, Teil des Primärschlüssels.
+        tests: [not_null]
+      - name: richtung_1
+        description: Radfahrten Richtung 1.
+        tests: [not_null]
+      - name: richtung_2
+        description: Radfahrten Richtung 2.
         tests: [not_null]
       - name: gesamt
+        description: Gesamtzahl (= richtung_1 + richtung_2).
         tests: [not_null]
-        # TODO: accepted_range (>= 0), expression gesamt = richtung_1 + richtung_2
+    # Zusammengesetzte/expressive Regeln (PK-Eindeutigkeit, Richtungssumme,
+    # Nicht-Negativität, Bewölkungs-Range) liegen als Singular Tests unter tests/
+    # — kein dbt_utils nötig, CI bleibt offline-tauglich.
