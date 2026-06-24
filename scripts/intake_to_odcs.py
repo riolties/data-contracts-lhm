@@ -79,12 +79,15 @@ def _profiler_rule_to_odcs(rule: dict, table: str) -> dict | None:
                     {"property": "column", "value": col},
                 ]}
     if r == "unique":
-        col = rule["column"]
-        return {**base, "name": f"unique_{col}",
-                "description": f"Spalte {col} eindeutig.",
+        cols = rule.get("columns") or [rule["column"]]
+        col_list = ", ".join(cols)
+        name = "unique_" + "_".join(cols)
+        label = "Spalte" if len(cols) == 1 else "Spaltenkombination"
+        return {**base, "name": name, "dimension": "uniqueness",
+                "description": f"{label} {col_list} eindeutig.",
                 "customProperties": [
                     {"property": "engine", "value": "sql"},
-                    {"property": "query", "value": f"SELECT count(*) FROM (SELECT {col} FROM {table} GROUP BY {col} HAVING count(*) > 1)"},
+                    {"property": "query", "value": f"SELECT count(*) FROM (SELECT {col_list} FROM {table} GROUP BY {col_list} HAVING count(*) > 1)"},
                     {"property": "expect", "value": 0},
                 ]}
     if r == "range":
@@ -115,6 +118,8 @@ def _normalize_rule(rule: dict, col_map: dict[str, str]) -> dict:
     r = dict(rule)
     if "column" in r:
         r["column"] = col_map.get(r["column"], r["column"])
+    if "columns" in r:
+        r["columns"] = [col_map.get(c, c) for c in r["columns"]]
     if "expr" in r:
         expr = r["expr"]
         for old, new in col_map.items():
@@ -160,7 +165,17 @@ def build_contracts(intake: dict, profiling: dict) -> dict:
 
     intake_col_map: dict[str, dict] = {c["name"]: c for c in intake.get("columns", [])}
     profiler_cols: list[dict] = profiling.get("columns", [])
-    quality_rules: list[dict] = profiling.get("quality_rules", [])
+
+    # Profiler-Kandidaten + intake.quality_rules mergen: der Mensch (intake) überschreibt
+    # bzw. ergänzt die beobachteten Kandidaten (intake.schema: "überschrieben oder ergänzt").
+    def _rule_key(r: dict) -> tuple:
+        cols = tuple(r["columns"]) if r.get("columns") else None
+        return (r.get("rule"), r.get("column"), cols, r.get("expr"))
+
+    merged: dict[tuple, dict] = {_rule_key(r): r for r in profiling.get("quality_rules", [])}
+    for r in intake.get("quality_rules", []):
+        merged[_rule_key(r)] = r
+    quality_rules: list[dict] = list(merged.values())
 
     input_table = f"{product}_rohdaten"
     output_table = f"{product}_tageswerte"

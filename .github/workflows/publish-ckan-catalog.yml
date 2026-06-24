@@ -19,7 +19,7 @@ jobs:
       - run: pip install pyyaml requests
       # TODO(Workstream C): lokale CKAN bereitstellen (ckan/docker-compose.yml) oder Ziel-CKAN konfigurieren
       - name: Publish to CKAN
-        run: python scripts/ckan_publish.py --contract domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr-tageswerte.output.odcs.yaml
+        run: python scripts/ckan_publish.py --contract domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr.output.odcs.yaml
       - name: Render catalog page
         run: python scripts/render_catalog.py --product domains/mobilitaetsreferat/data-products/radverkehr --write
       # TODO(Workstream B): gerenderte README.md zurückcommitten (falls geändert).

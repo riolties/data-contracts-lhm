@@ -20,4 +20,4 @@ jobs:
       #   working-directory: pipeline/dbt
       #   run: dbt build --profiles-dir .
       - name: Quality Gate
-        run: python scripts/run_quality.py --contract domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr-tageswerte.output.odcs.yaml --table radverkehr_tageswerte
+        run: python scripts/run_quality.py --contract domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr.output.odcs.yaml --table radverkehr_tageswerte
