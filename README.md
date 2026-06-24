@@ -2,7 +2,7 @@
 
 Hackathon-Blueprint: **Data Contracts & Data Products als Code** für die Landeshauptstadt München (Data Mesh). Zeigt den kompletten Lebenszyklus eines Datenprodukts — von der Quelle über automatisch abgeleitete **ODCS-v3-Contracts**, **Ingestion (dlt) + Transformation (dbt)**, **Quality Gate** und **Freigabe** bis **CKAN-Katalog** — portierbar auf **GitLab + ServiceNow**.
 
-> Status: Hackathon-Gerüst. Logik in `scripts/` und `pipeline/` ist noch zu implementieren (siehe Issues & `TODO`s).
+> Status: **lauffähig end-to-end.** Profiler, Contract-Generierung, dlt→dbt-Pipeline, Quality-Gate, Validierung und CKAN-Publish laufen vollständig in GitHub Actions; Demo via `streamlit run demo/sn_mock.py`.
 
 ## Dokumentation
 - 📋 [Hackathon-Plan](docs/hackathon-plan.md) — Scope, Architektur, Team-Aufteilung, Timeline

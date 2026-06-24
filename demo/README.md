@@ -25,19 +25,28 @@ Browser öffnet sich automatisch auf http://localhost:8501
 - Pipeline-Button ist erst aktiv wenn alle nötigen Freigaben erteilt sind
 - `✅ Als Dateneigner freigeben` → `🚀 Pipeline triggern`
 
-### Schritt 3 — Pipeline (live)
-- **Schritt 1:** `profile_source.py` — CSV analysieren, Spalten/Typen erkennen
-- **Schritt 2:** `intake_to_odcs.py` — Governance + Profiling → ODCS-Contracts
-- **Schritt 3:** `validate_odcs.py` — ODCS-Schema + LHM-Regeln R1–R10 ✅
-- **Schritt 4:** `render_catalog.py` — README/Katalogseite generieren
-- **Bonus:** CKAN dry-run — zeigt den fertigen DCAT-AP.de-Payload
+### Schritt 3 — Pipeline (live auf GitHub Actions)
+Die Demo triggert nach der Freigabe **echt** den Workflow `intake-to-contract.yml` auf
+GitHub (entspricht dem GitLab-CI-Trigger aus ServiceNow im Produktivbetrieb) und pollt
+den Run live:
+- **Profiler** (`profile_source.py`) — CSV analysieren, Spalten/Typen/Quality-Kandidaten
+- **Contracts erzeugen** (`intake_to_odcs.py`) — Governance + Profiling → ODCS-Contracts
+- **PR öffnen** (`create-pull-request`) — Branch `contract/<domain>/<produkt>`, Label `owner-approved`
+- Live-Fortschritt (Jobs/Steps mit ✅/⟳/⏳) + Link zum Run und zum geöffneten PR
 
-### Schritt 4 — Ergebnis
-- **Katalog / README** — vollständig generierte Produktseite mit Schema, Quality-Regeln, SLA
+> Voraussetzung: `gh` ist authentifiziert (`gh auth status`) und hat Zugriff auf das Repo.
+> Bei flakigem WLAN als Fallback einen vorab geöffneten PR / Screencast bereithalten.
+
+### Schritt 4 — Ergebnis (Dateien vom PR-Branch)
+- **Katalog / README** — generierte Produktseite (sofern auf dem Branch vorhanden)
 - **Output Contract** — ODCS YAML mit allen Spalten, Typen, Quality-Regeln
 - **Input Contract** — Rohdaten-Contract
-- **CKAN-Payload** — JSON für die CKAN-API
-- **GitHub PR** — Command zum Triggern des echten Workflows (optional live zeigen)
+- **CKAN-Payload** — `ckan_publish.py --contract … ` als Dry-Run (kein API-Key nötig)
+- **GitHub PR** — Link zum echten, gerade geöffneten Pull Request
+
+Die nachgelagerten Gates (`validate-contracts`, `pipeline-and-quality`) und der
+CKAN-Publish nach Merge (`publish-ckan-catalog`) laufen auf dem PR bzw. auf `main`
+in GitHub Actions — im Pitch über das echte CKAN-Portal (ckan.davb.dev) zeigen.
 
 ---
 
