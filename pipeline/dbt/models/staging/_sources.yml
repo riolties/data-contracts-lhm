@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Von dlt geladene Rohdaten (Input Port).
+    schema: raw
+    tables:
+      - name: raw_radverkehr_tage
+        description: Roh-CSV Tageswerte Raddauerzählstellen (1:1 aus opendata).

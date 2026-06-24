@@ -1,0 +1,17 @@
+name: validate-contracts
+# PR-Gate: ODCS-Schema + LHM-Regeln. Required Check (vor Freigabe).
+on:
+  pull_request:
+    paths: ["domains/**", "schemas/**", "scripts/validate_odcs.py"]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pyyaml jsonschema
+      - name: Validate ODCS contracts
+        run: python scripts/validate_odcs.py "domains/**/contracts/**/*.odcs.yaml"

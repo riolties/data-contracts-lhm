@@ -1,0 +1,24 @@
+name: approval-gate
+# Freigabe-Gate (simuliert ServiceNow-Approval): owner-approved immer,
+# dsb-approved nur wenn ein geänderter Contract personal_data: true hat.
+# Reihenfolge: validate-contracts + pipeline-and-quality müssen via Branch-Protection
+# grün sein, BEVOR diese Freigabe zählt (siehe docs/workflow-intake-approval.md).
+on:
+  pull_request:
+    types: [opened, labeled, unlabeled, synchronize]
+  workflow_dispatch:
+
+jobs:
+  approval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pyyaml
+      - name: Check approvals
+        run: |
+          echo "TODO(Workstream B): Labels des PR prüfen:"
+          echo " - 'owner-approved' immer erforderlich"
+          echo " - 'dsb-approved' erforderlich, wenn ein geänderter *.odcs.yaml personal_data: true hat"
+          echo " - fehlt eine erforderliche Freigabe -> exit 1"

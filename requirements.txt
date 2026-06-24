@@ -1,0 +1,8 @@
+# Hackathon-Gerüst — bewusst schlank gehalten
+pyyaml>=6.0          # YAML lesen/schreiben (Contracts, data-product.yaml)
+jsonschema>=4.0      # ODCS-Schema-Validierung + intake.schema.json
+pandas>=2.0          # Profiling + Quality-Checks
+duckdb>=1.0          # lokales Warehouse + Quality-Engine
+dlt[duckdb]>=1.0     # Ingestion CSV -> DuckDB
+dbt-duckdb>=1.8      # Transformation (staging -> mart)
+requests>=2.31       # CKAN-API

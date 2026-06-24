@@ -1,3 +1,15 @@
 .venv/
 __pycache__/
 *.pyc
+
+# lokales Warehouse / Pipeline-Artefakte
+*.duckdb
+*.duckdb.wal
+pipeline/dbt/target/
+pipeline/dbt/dbt_packages/
+pipeline/dbt/logs/
+.dlt/
+
+# generierte Output-Port-Artefakte
+output/
+access-policy.json

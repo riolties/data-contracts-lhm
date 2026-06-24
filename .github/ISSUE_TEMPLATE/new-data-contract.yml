@@ -1,0 +1,54 @@
+name: Neues Datenprodukt (Data Contract)
+description: Fallback-Erfassung (Demo) — entspricht dem ServiceNow-Katalogformular; erzeugt intake.json.
+title: "[Data Product] <Referat> / <Produkt>"
+labels: ["data-contract"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Demo-Intake. In Produktion erfolgt das über ServiceNow (siehe intake/servicenow-catalog-item.md).
+        Technisches Schema wird normalerweise vom Profiler vorbefüllt.
+  - type: input
+    id: domain
+    attributes: { label: Referat (domain), placeholder: mobilitaetsreferat }
+    validations: { required: true }
+  - type: input
+    id: product
+    attributes: { label: Produkt-Slug, placeholder: radverkehr }
+    validations: { required: true }
+  - type: input
+    id: title
+    attributes: { label: Titel }
+    validations: { required: true }
+  - type: input
+    id: data_owner
+    attributes: { label: Dateneigner (Freigabe Stufe 1), placeholder: name@muenchen.de }
+    validations: { required: true }
+  - type: dropdown
+    id: classification
+    attributes:
+      label: Klassifizierung
+      options: [public, internal, confidential]
+    validations: { required: true }
+  - type: dropdown
+    id: personal_data
+    attributes:
+      label: Personenbezogene Daten?
+      options: ["false", "true"]
+    validations: { required: true }
+  - type: dropdown
+    id: open_data_candidate
+    attributes:
+      label: Open-Data-Kandidat?
+      options: ["false", "true"]
+    validations: { required: true }
+  - type: input
+    id: source_location
+    attributes: { label: Quelle (Pfad/Connection), placeholder: data/sample_radverkehr_tageswerte_2025_01.csv }
+    validations: { required: true }
+  - type: textarea
+    id: intake_json
+    attributes:
+      label: intake.json (optional, vom Profiler vorbefüllt)
+      description: Vollständiges intake.json gemäß schemas/intake.schema.json. Wenn leer, baut die Action es aus den Feldern oben.
+      render: json

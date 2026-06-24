@@ -1,0 +1,28 @@
+# Data Product Descriptor — Port-Topologie (Data Mesh)
+# Verbindet Quelle (Input Port) mit konsumierbarem Output Port; jeder Port
+# referenziert einen ODCS-Contract. Details: docs/architecture.md
+id: lhm:mobilitaetsreferat:radverkehr
+name: radverkehr
+title: Radverkehr Tageswerte München
+domain: mobilitaetsreferat
+status: active
+
+# Quelle (im Demo: manueller File-Export; Abstraktion für reporting_db/eai/...)
+source:
+  type: file_export
+  location: data/sample_radverkehr_tageswerte_2025_01.csv
+
+ports:
+  input:
+    - id: opendata-raddaten
+      contract: contracts/input/opendata-raddaten.input.odcs.yaml   # TODO: Workstream A
+      description: Rohdaten Raddauerzählstellen (opendata München).
+  output:
+    - id: radverkehr-tageswerte
+      contract: contracts/output/radverkehr-tageswerte.output.odcs.yaml  # TODO: Workstream A
+      description: Bereinigte Tageswerte + Wetter; dbt-Mart 'radverkehr_tageswerte'.
+      serving:
+        - type: db_view        # stabile View im Hub (DuckDB-Demo / Postgres-Ziel)
+          object: radverkehr_tageswerte
+        - type: file_export    # Parquet/CSV unter output/
+          format: parquet

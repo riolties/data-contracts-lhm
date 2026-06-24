@@ -1,0 +1,29 @@
+# Lokale CKAN für die Demo (Workstream C).
+# Bewusst minimal; ckan_publish.py spricht die CKAN-API (package_create/update).
+# TODO(Workstream C): Image-Tag/ENV gegen eine lauffähige CKAN-Demo verifizieren
+#   (z.B. ckan/ckan-dev oder ein schlankes ckan+postgres+solr/redis-Setup).
+# Für DCAT-AP.de-Export später: ckanext-dcat aktivieren.
+services:
+  ckan:
+    image: ckan/ckan-dev:2.10            # TODO: Tag prüfen/pinnen
+    ports:
+      - "5000:5000"
+    environment:
+      CKAN_SITE_URL: http://localhost:5000
+      CKAN_SQLALCHEMY_URL: postgresql://ckan:ckan@db/ckan
+      CKAN_REDIS_URL: redis://redis:6379/0
+      CKAN_SOLR_URL: http://solr:8983/solr/ckan
+    depends_on: [db, redis, solr]
+
+  db:
+    image: ckan/ckan-postgres-dev:2.10   # TODO: Tag prüfen
+    environment:
+      POSTGRES_PASSWORD: ckan
+      POSTGRES_USER: ckan
+      POSTGRES_DB: ckan
+
+  redis:
+    image: redis:7
+
+  solr:
+    image: ckan/ckan-solr:2.10-solr9     # TODO: Tag prüfen

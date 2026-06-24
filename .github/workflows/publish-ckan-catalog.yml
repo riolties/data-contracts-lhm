@@ -1,0 +1,25 @@
+name: publish-ckan-catalog
+# Nach Merge auf main: Metadaten nach CKAN publizieren + Katalogseite rendern.
+on:
+  push:
+    branches: [main]
+    paths: ["domains/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pyyaml requests
+      # TODO(Workstream C): lokale CKAN bereitstellen (ckan/docker-compose.yml) oder Ziel-CKAN konfigurieren
+      - name: Publish to CKAN
+        run: python scripts/ckan_publish.py --contract domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr-tageswerte.output.odcs.yaml
+      - name: Render catalog page
+        run: python scripts/render_catalog.py --product domains/mobilitaetsreferat/data-products/radverkehr --write
+      # TODO(Workstream B): gerenderte README.md zurückcommitten (falls geändert).

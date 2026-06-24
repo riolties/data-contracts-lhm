@@ -1,0 +1,54 @@
+# Vorlage ODCS-v3-Contract (von intake_to_odcs.py befüllt; A nutzt sie als Referenz).
+# Pflicht-Kernfelder: version, apiVersion, kind, id, status.
+apiVersion: v3.1.0
+kind: DataContract
+id: lhm:{{domain}}:{{port}}:{{product}}
+version: 1.0.0
+status: active
+name: {{title}}
+domain: {{domain}}
+
+description:
+  purpose: {{description.purpose}}
+  usage: {{description.usage}}
+  limitations: {{description.limitations}}
+
+servers:
+  - server: {{server_id}}
+    type: {{server_type}}        # custom | duckdb | postgres | ...
+    description: {{server_description}}
+
+schema:
+  - name: {{object_name}}
+    logicalType: object
+    physicalType: {{physical_type}}    # csv | view | table
+    properties:
+      # je Spalte (aus Profiler + Governance):
+      - name: {{column_name}}
+        logicalType: {{logical_type}}  # string|integer|number|date|boolean
+        physicalType: {{physical_type}}
+        required: {{required}}
+        description: {{column_description}}   # LHM-Regel R9: Pflicht
+        quality:
+          # z.B. - { rule: notNull }   /  - { rule: sql, query: "gesamt = richtung_1 + richtung_2" }
+
+slaProperties:
+  - property: frequency
+    value: {{frequency_value}}
+    unit: {{frequency_unit}}
+
+# --- LHM-Governance (customProperties) ---
+customProperties:
+  - { property: classification, value: {{classification}} }        # public|internal|confidential
+  - { property: contract_status, value: draft }
+  - { property: personal_data, value: {{personal_data}} }
+  # wenn personal_data=true (LHM-Regel R5/R6):
+  # - { property: legal_basis, value: "Art. 6(1)(e) DSGVO" }
+  # - { property: retention_period, value: P3Y }
+  # - { property: dpo_notified, value: true }
+  # wenn open_data_candidate=true (LHM-Regel R7/R8 -> classification public):
+  # - { property: open_data_candidate, value: true }
+  # - { property: license, value: "https://www.govdata.de/dl-de/by-2-0" }
+  # - { property: spatial, value: "https://sws.geonames.org/2867714/" }
+  # - { property: accrual_periodicity, value: "http://publications.europa.eu/resource/authority/frequency/DAILY" }
+  # - { property: govdata_category, value: ["http://publications.europa.eu/resource/authority/data-theme/TRAN"] }

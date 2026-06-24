@@ -1,0 +1,13 @@
+name: radverkehr
+version: "1.0.0"
+config-version: 2
+profile: radverkehr
+
+model-paths: ["models"]
+
+models:
+  radverkehr:
+    staging:
+      +materialized: view
+    mart:
+      +materialized: view   # Output Port = stabile View (siehe docs/access-and-output-port.md)

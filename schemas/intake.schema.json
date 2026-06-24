@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lhm/data-contracts/intake.schema.json",
+  "title": "LHM Data Product Intake Payload",
+  "description": "Payload, das ServiceNow (bzw. der Issue-Form-Fallback) an die Pipeline übergibt. Vereint den maschinellen Profiling-Draft mit den menschlichen Governance-Feldern. intake_to_odcs.py erzeugt daraus den finalen ODCS-Contract. GEMEINSAME SCHNITTSTELLE — in Stunde 0-1 abstimmen, bevor A/B/C loslaufen.",
+  "type": "object",
+  "required": ["domain", "product", "title", "owner", "classification", "source", "columns"],
+  "additionalProperties": false,
+  "properties": {
+    "domain": {
+      "type": "string",
+      "description": "Datendomäne = Referat (lowercase slug).",
+      "examples": ["mobilitaetsreferat", "ewo"]
+    },
+    "product": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]+$",
+      "description": "Produkt-Slug.",
+      "examples": ["radverkehr"]
+    },
+    "title": { "type": "string", "description": "Menschenlesbarer Titel." },
+    "description": {
+      "type": "object",
+      "properties": {
+        "purpose": { "type": "string" },
+        "usage": { "type": "string" },
+        "limitations": { "type": "string" }
+      }
+    },
+    "owner": {
+      "type": "object",
+      "required": ["data_owner"],
+      "properties": {
+        "data_owner": { "type": "string", "description": "Dateneigner (Freigabe Stufe 1)." },
+        "data_steward": { "type": "string" },
+        "contact": { "type": "string" }
+      }
+    },
+    "classification": {
+      "type": "string",
+      "enum": ["public", "internal", "confidential"]
+    },
+    "update_frequency": {
+      "type": "string",
+      "description": "ISO-8601-Periodizität oder MDR-URI.",
+      "examples": ["P1D", "P1M"]
+    },
+    "personal_data": { "type": "boolean", "default": false },
+    "legal_basis": { "type": "string", "description": "z.B. Art. 6(1)(e) DSGVO. Pflicht wenn personal_data=true." },
+    "retention_period": { "type": "string", "description": "ISO-8601-Dauer, z.B. P3Y. Pflicht wenn personal_data=true." },
+    "open_data_candidate": { "type": "boolean", "default": false },
+    "license": { "type": "string", "description": "Lizenz-URI. Pflicht wenn open_data_candidate=true." },
+    "spatial": { "type": "string", "description": "Räumliche Abdeckung (URI), z.B. GeoNames München." },
+    "govdata_category": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "DCAT-Theme-URIs. Pflicht wenn open_data_candidate=true."
+    },
+    "source": {
+      "type": "object",
+      "required": ["type", "location"],
+      "properties": {
+        "type": { "type": "string", "enum": ["file_export", "reporting_db", "network_drive", "eai"] },
+        "location": { "type": "string", "description": "Pfad/Connection (im Demo: CSV-Pfad)." }
+      }
+    },
+    "columns": {
+      "type": "array",
+      "description": "Vom Profiler erkannt, vom Menschen annotiert.",
+      "items": {
+        "type": "object",
+        "required": ["name", "logical_type"],
+        "properties": {
+          "name": { "type": "string" },
+          "logical_type": { "type": "string", "enum": ["string", "integer", "number", "date", "boolean"] },
+          "physical_type": { "type": "string" },
+          "required": { "type": "boolean" },
+          "description": { "type": "string", "description": "Fachliche Beschreibung (Mensch)." },
+          "classification": { "type": "string", "enum": ["public", "internal", "confidential"] }
+        }
+      }
+    },
+    "quality_rules": {
+      "type": "array",
+      "description": "Bestätigte/angepasste Kandidatenregeln aus dem Profiler.",
+      "items": {
+        "type": "object",
+        "required": ["rule"],
+        "properties": {
+          "rule": { "type": "string", "enum": ["not_null", "unique", "range", "expression"] },
+          "column": { "type": "string" },
+          "min": { "type": "number" },
+          "max": { "type": "number" },
+          "expr": { "type": "string" }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "personal_data": { "const": true } }, "required": ["personal_data"] },
+      "then": { "required": ["legal_basis", "retention_period"] }
+    },
+    {
+      "if": { "properties": { "open_data_candidate": { "const": true } }, "required": ["open_data_candidate"] },
+      "then": { "required": ["license", "govdata_category"] }
+    }
+  ]
+}

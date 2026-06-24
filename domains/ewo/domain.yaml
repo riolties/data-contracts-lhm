@@ -1,0 +1,8 @@
+# Datendomäne (LHM-Referat) — Pilot-Produzent, Platzhalter
+name: ewo
+title: Amt für Einwohnerwesen (EWO)
+description: "Produzent der Adressdaten im Phase-1-Pilot (Konsument: Mobilitätsreferat)."
+data_owner: TODO-dateneigner@muenchen.de
+data_steward: TODO-steward@muenchen.de
+status: planned
+data_products: []   # z.B. adressdaten (personenbezogen -> DSB-Freigabe nötig)

@@ -1,0 +1,29 @@
+name: intake-to-contract
+# Erzeugt aus intake.json den Contract + data-product.yaml und öffnet einen PR.
+# Real: ServiceNow triggert via repository_dispatch. Demo: Issue mit Label 'data-contract'.
+on:
+  repository_dispatch:
+    types: [new-data-contract]
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  build-contract:
+    if: github.event_name != 'issues' || github.event.label.name == 'data-contract'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pyyaml jsonschema
+      # TODO(Workstream B): intake.json aus repository_dispatch-Payload bzw. Issue-Body extrahieren
+      - name: Build contract from intake
+        run: python scripts/intake_to_odcs.py --intake intake/intake.example.json --write
+      # TODO(Workstream B): Branch anlegen, committen, PR öffnen (peter-evans/create-pull-request),
+      #   Labels needs-owner-approval (+ needs-dsb-approval wenn personal_data) setzen.

@@ -1,0 +1,9 @@
+# Datendomäne (LHM-Referat)
+name: mobilitaetsreferat
+title: Mobilitätsreferat
+description: Daten rund um Mobilität und Verkehr der Landeshauptstadt München.
+data_owner: TODO-dateneigner@muenchen.de        # Freigabe Stufe 1
+data_steward: TODO-steward@muenchen.de
+status: active
+data_products:
+  - radverkehr   # voll ausgearbeitetes Beispiel (Workstream A)

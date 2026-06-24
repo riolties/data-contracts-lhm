@@ -1,0 +1,10 @@
+# dbt-duckdb-Profil — lokales Warehouse, kein DB-Server.
+# LHM-Ziel: gleiches Projekt gegen PostgreSQL (Profil austauschen).
+radverkehr:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: warehouse.duckdb
+      schema: main
+      threads: 4

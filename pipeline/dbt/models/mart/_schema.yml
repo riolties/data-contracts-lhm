@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: radverkehr_tageswerte
+    description: >-
+      Output Port des Datenprodukts radverkehr — Tageswerte + Wetter je Zählstelle.
+      dbt-Tests spiegeln die Quality-Regeln aus dem Output-Contract (run_quality.py).
+    # TODO(Workstream C): Tests an Output-Contract angleichen.
+    columns:
+      - name: datum
+        tests: [not_null]
+      - name: zaehlstelle
+        tests: [not_null]
+      - name: gesamt
+        tests: [not_null]
+        # TODO: accepted_range (>= 0), expression gesamt = richtung_1 + richtung_2

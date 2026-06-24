@@ -1,0 +1,20 @@
+# Vorlage für data-product.yaml — von intake_to_odcs.py (Workstream B) befüllt.
+# Platzhalter in {{ }} werden aus intake.json gesetzt.
+id: lhm:{{domain}}:{{product}}
+name: {{product}}
+title: {{title}}
+domain: {{domain}}
+status: active
+source:
+  type: {{source.type}}
+  location: {{source.location}}
+ports:
+  input:
+    - id: {{product}}-input
+      contract: contracts/input/{{product}}.input.odcs.yaml
+  output:
+    - id: {{product}}-output
+      contract: contracts/output/{{product}}.output.odcs.yaml
+      serving:
+        - type: db_view
+          object: {{product}}

@@ -1,0 +1,23 @@
+name: pipeline-and-quality
+# PR-Gate: dlt -> dbt -> Quality gegen materialisierte Daten. Required Check (vor Freigabe).
+on:
+  pull_request:
+    paths: ["domains/**", "pipeline/**", "scripts/run_quality.py", "data/**"]
+  workflow_dispatch:
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt
+      - name: Ingestion (dlt -> DuckDB)
+        run: python pipeline/ingest/load_csv.py
+      # TODO(Workstream C): dbt build aktivieren, sobald Modelle laufen
+      # - name: Transform (dbt-duckdb)
+      #   working-directory: pipeline/dbt
+      #   run: dbt build --profiles-dir .
+      - name: Quality Gate
+        run: python scripts/run_quality.py --contract domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr-tageswerte.output.odcs.yaml --table radverkehr_tageswerte
