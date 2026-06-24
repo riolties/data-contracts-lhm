@@ -18,6 +18,10 @@ Ziel des Hackathons (3 Personen, 12 h): In einem **GitHub-Repo** (`riolties/data
 - **CKAN-Demo: lokale CKAN via Docker.**
 - Beispiel: **Mobilitätsreferat / „radverkehr"** auf Basis der **Raddauerzählstellen** (opendata.muenchen.de, Lizenz dl-by-de/2.0).
 
+**Vertiefende Designs:**
+- [Intake-, Profiling- & Freigabe-Workflow (ServiceNow ↔ GitLab)](workflow-intake-approval.md) — 6-Phasen-Sequenz, bidirektionale Kopplung, dynamisches Formular, Validierung-vor-Freigabe.
+- [Output Port & Zugriffskontrolle](access-and-output-port.md) — Bereitstellung (View/Datei/API/Open-Data) + contract-getriebenes RBAC (Keycloak + Postgres-Grants).
+
 ---
 
 ## Lebenszyklus (Zielbild)
@@ -136,8 +140,8 @@ Nach Merge: `publish-ckan-catalog.yml` → CKAN via `ckan/docker-compose.yml`; `
 | Workstream | Verantwortung | Kern-Deliverables |
 | --- | --- | --- |
 | **A — Domänen, Contracts & Profiler** | `domains/`-Struktur, `domain.yaml`, ODCS Input+Output (`radverkehr`) inkl. `quality`-Block, `templates`, `schemas/lhm-rules.md`, **`profile_source.py`** (CSV→Draft-ODCS), `docs/architecture.md`+`governance.md` | Beispielprodukt + Profiler + Regelwerk |
-| **B — Intake, Governance, Validierung & Katalog** | `intake.schema.json`, `intake/servicenow-catalog-item.md` (+Topologie), `intake_to_odcs.py` (Merge), `intake-to-contract.yml`, `approval-gate.yml`, Issue-Form-Fallback, `validate_odcs.py`+`validate-contracts.yml`, `ckan_publish.py`+`publish-ckan-catalog.yml`+`render_catalog.py` | Intake→PR→Freigabe→CKAN/Katalog |
-| **C — Data Pipeline & Quality** | `pipeline/ingest/load_csv.py` (dlt→DuckDB), `pipeline/dbt/` (staging+mart+Tests), `run_quality.py`, `pipeline-and-quality.yml`, `ckan/docker-compose.yml` | lauffähige Pipeline + Quality-Gate + CKAN-Container |
+| **B — Intake, Governance, Validierung & Katalog** | `intake.schema.json`, `intake/servicenow-catalog-item.md` (+Topologie), **`profile.yml`-Workflow + Callback-Konzept** (Profiling→dynamisches Formular, s. [Workflow-Doc](workflow-intake-approval.md)), `intake_to_odcs.py` (Merge), `intake-to-contract.yml`, `approval-gate.yml` (Required-Checks-vor-Freigabe via Branch-Protection), Issue-Form-Fallback, `validate_odcs.py`+`validate-contracts.yml`, `ckan_publish.py`+`publish-ckan-catalog.yml`+`render_catalog.py` | Intake→PR→Freigabe→CKAN/Katalog |
+| **C — Data Pipeline, Quality & Output Port** | `pipeline/ingest/load_csv.py` (dlt→DuckDB), `pipeline/dbt/` (staging+mart+Tests), `run_quality.py`, `pipeline-and-quality.yml`, **Output Port**: View `radverkehr_tageswerte` + Parquet/CSV-Export unter `output/`, **`apply_access.py`** (Contract→GRANTs/`access-policy.json`, s. [Access-Doc](access-and-output-port.md)), `ckan/docker-compose.yml` | Pipeline + Quality-Gate + bereitgestellter Output Port + Zugriffspolicy |
 
 **Meilensteine:**
 - **h3** — A: Profiler erzeugt Draft-ODCS aus CSV; B: intake.schema + Merge erzeugt Contract lokal; C: dlt lädt CSV→DuckDB, dbt-staging läuft.
