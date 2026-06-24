@@ -6,7 +6,7 @@ status: active
 name: Radverkehr Tageswerte München — Rohdaten
 domain: mobilitaetsreferat
 description:
-  purpose: Tägliche Radverkehrszahlen je Dauerzählstelle inkl. Wetter.
+  purpose: Tägliche Radverkehrszahlen je Dauerzählstelle inkl. Wetterdaten.
   usage: Input-Port des Datenprodukts radverkehr — Quelle für dlt-Ingestion.
   limitations: Nur Dauerzählstellen; Wetter aggregiert je Tag.
 servers:
@@ -26,63 +26,62 @@ schema:
     logicalType: date
     physicalType: DATE
     required: true
-    description: Zähltag (Quellformat YYYY.MM.DD).
+    description: datum.
   - name: uhrzeit_start
     logicalType: time
     physicalType: TIME
     required: true
-    description: Beginn des Zählintervalls (in der Quelle konstant 00:00 = Tagesbeginn).
+    description: uhrzeit_start.
   - name: uhrzeit_ende
     logicalType: string
     physicalType: VARCHAR
     required: true
-    description: Ende des Zählintervalls; Quelle nutzt '.' als Trenner (23.59) — im
-      Staging zu normalisieren.
+    description: uhrzeit_ende.
   - name: zaehlstelle
     logicalType: string
     physicalType: VARCHAR
     required: true
-    description: Name der Dauerzählstelle (z.B. Arnulf, Erhardt).
+    description: zaehlstelle.
   - name: richtung_1
     logicalType: integer
     physicalType: INTEGER
     required: true
-    description: Gezählte Radfahrten in Richtung 1.
+    description: richtung_1.
   - name: richtung_2
     logicalType: integer
     physicalType: INTEGER
     required: true
-    description: Gezählte Radfahrten in Richtung 2.
+    description: richtung_2.
   - name: gesamt
     logicalType: integer
     physicalType: INTEGER
     required: true
-    description: Gesamtzahl Radfahrten am Tag (= richtung_1 + richtung_2).
+    description: gesamt.
   - name: min-temp
     logicalType: number
     physicalType: DOUBLE
     required: true
-    description: Tagestiefsttemperatur in °C (Begleitwetter).
+    description: min-temp.
   - name: max-temp
     logicalType: number
     physicalType: DOUBLE
     required: true
-    description: Tageshöchsttemperatur in °C (Begleitwetter).
+    description: max-temp.
   - name: niederschlag
     logicalType: number
     physicalType: DOUBLE
     required: true
-    description: Niederschlagsmenge in mm (Begleitwetter).
+    description: niederschlag.
   - name: bewoelkung
     logicalType: integer
     physicalType: INTEGER
     required: true
-    description: Bewölkungsgrad in Prozent (0–100, Begleitwetter).
+    description: bewoelkung.
   - name: sonnenstunden
     logicalType: number
     physicalType: DOUBLE
     required: true
-    description: Sonnenscheindauer in Stunden (Begleitwetter).
+    description: sonnenstunden.
   quality:
   - type: text
     dimension: accuracy
