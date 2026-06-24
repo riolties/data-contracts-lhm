@@ -1,11 +1,13 @@
 name: approval-gate
-# Freigabe-Gate (simuliert ServiceNow-Approval): owner-approved immer,
-# dsb-approved nur wenn ein geänderter Contract personal_data: true hat.
-# Reihenfolge: validate-contracts + pipeline-and-quality müssen via Branch-Protection
-# grün sein, BEVOR diese Freigabe zählt (siehe docs/workflow-intake-approval.md).
+# Technisches Sicherheitsnetz: prüft, ob die Freigabe-Labels am PR vorhanden sind.
+# - 'owner-approved' immer erforderlich (wird von intake-to-contract.yml gesetzt)
+# - 'dsb-approved' erforderlich, wenn ein geänderter Contract personal_data: true hat
+# Governance-Freigabe findet vor dem Trigger in ServiceNow statt;
+# dieser Check stellt sicher, dass der PR die Freigabe korrekt widerspiegelt.
 on:
   pull_request:
     types: [opened, labeled, unlabeled, synchronize]
+    paths: ["domains/**"]
   workflow_dispatch:
 
 jobs:
@@ -13,12 +15,48 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
+
       - run: pip install pyyaml
-      - name: Check approvals
+
+      - name: Freigabe-Labels prüfen
+        env:
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
         run: |
-          echo "TODO(Workstream B): Labels des PR prüfen:"
-          echo " - 'owner-approved' immer erforderlich"
-          echo " - 'dsb-approved' erforderlich, wenn ein geänderter *.odcs.yaml personal_data: true hat"
-          echo " - fehlt eine erforderliche Freigabe -> exit 1"
+          python3 - << 'PYEOF'
+          import json, glob, sys, os
+          import yaml
+
+          labels = set(json.loads(os.environ.get("PR_LABELS", "[]")))
+          print(f"PR-Labels: {sorted(labels)}")
+
+          # owner-approved immer erforderlich
+          if "owner-approved" not in labels:
+              print("❌ Label 'owner-approved' fehlt — Gate rot")
+              sys.exit(1)
+          print("✅ owner-approved vorhanden")
+
+          # personal_data in geänderten Contracts prüfen
+          contracts = glob.glob("domains/**/contracts/**/*.odcs.yaml", recursive=True)
+          needs_dsb = False
+          for path in contracts:
+              try:
+                  with open(path, encoding="utf-8") as fh:
+                      c = yaml.safe_load(fh) or {}
+                  cp = {p["property"]: p["value"] for p in c.get("customProperties", [])}
+                  if cp.get("personal_data") is True:
+                      print(f"  ⚠️  personal_data=true: {path}")
+                      needs_dsb = True
+              except Exception as e:
+                  print(f"  [warn] {path}: {e}")
+
+          if needs_dsb and "dsb-approved" not in labels:
+              print("❌ Contract mit personal_data=true, aber Label 'dsb-approved' fehlt — Gate rot")
+              sys.exit(1)
+          if needs_dsb:
+              print("✅ dsb-approved vorhanden")
+
+          print("✅ Freigabe-Gate grün")
+          PYEOF

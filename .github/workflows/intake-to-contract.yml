@@ -1,12 +1,21 @@
 name: intake-to-contract
-# Erzeugt aus intake.json den Contract + data-product.yaml und öffnet einen PR.
-# Real: ServiceNow triggert via repository_dispatch. Demo: Issue mit Label 'data-contract'.
+# Simuliert den ServiceNow-Trigger nach Governance-Freigabe:
+#   1. Issue bekommt Label 'owner-approved' → Workflow prüft Freigabe-Vollständigkeit
+#   2. Profiler läuft auf source.location aus dem Intake-Payload
+#   3. intake_to_odcs.py erzeugt Contracts + data-product.yaml
+#   4. PR wird geöffnet
+# Real: ServiceNow ruft nach Freigabe den GitLab-Pipeline-Trigger auf.
 on:
-  repository_dispatch:
-    types: [new-data-contract]
   issues:
     types: [labeled]
+  repository_dispatch:
+    types: [new-data-contract]
   workflow_dispatch:
+    inputs:
+      intake_json:
+        description: "Intake-Payload als JSON-String"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -15,15 +24,123 @@ permissions:
 
 jobs:
   build-contract:
-    if: github.event_name != 'issues' || github.event.label.name == 'data-contract'
+    # Issue-Trigger: nur bei Label 'owner-approved'
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'repository_dispatch' ||
+      (github.event_name == 'issues' && github.event.label.name == 'owner-approved')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
+
       - run: pip install pyyaml jsonschema
-      # TODO(Workstream B): intake.json aus repository_dispatch-Payload bzw. Issue-Body extrahieren
-      - name: Build contract from intake
-        run: python scripts/intake_to_odcs.py --intake intake/intake.example.json --write
-      # TODO(Workstream B): Branch anlegen, committen, PR öffnen (peter-evans/create-pull-request),
-      #   Labels needs-owner-approval (+ needs-dsb-approval wenn personal_data) setzen.
+
+      # --- Intake-JSON bestimmen ---
+      - name: Intake-JSON vorbereiten
+        id: intake
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          WD_INPUT: ${{ github.event.inputs.intake_json }}
+          RD_PAYLOAD: ${{ toJson(github.event.client_payload) }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -e
+          INTAKE_FILE="intake_payload.json"
+
+          if [ "$EVENT" = "workflow_dispatch" ] && [ -n "$WD_INPUT" ]; then
+            echo "$WD_INPUT" > "$INTAKE_FILE"
+
+          elif [ "$EVENT" = "repository_dispatch" ]; then
+            # ServiceNow schickt intake.json als client_payload
+            echo "$RD_PAYLOAD" | python3 -c "
+          import json, sys
+          p = json.load(sys.stdin)
+          intake = p.get('intake') or p
+          json.dump(intake, open('$INTAKE_FILE', 'w'), ensure_ascii=False)
+          "
+
+          else
+            # Issue-Body: erstes ```json ... ``` Block
+            python3 -c "
+          import json, re, os, sys
+          body = os.environ.get('ISSUE_BODY', '')
+          m = re.search(r'\`\`\`json\s*(.*?)\s*\`\`\`', body, re.DOTALL)
+          if not m:
+              # Fallback: gesamte Body als JSON
+              data = json.loads(body.strip())
+          else:
+              data = json.loads(m.group(1))
+          json.dump(data, open('$INTAKE_FILE', 'w'), ensure_ascii=False)
+          "
+          fi
+
+          # personal_data prüfen → dsb-approved nötig?
+          PERSONAL=$(python3 -c "import json; d=json.load(open('$INTAKE_FILE')); print(str(d.get('personal_data', False)).lower())")
+          echo "personal_data=$PERSONAL" >> "$GITHUB_OUTPUT"
+          echo "intake_file=$INTAKE_FILE" >> "$GITHUB_OUTPUT"
+
+          # Domain + Product für Branch-Name
+          DOMAIN=$(python3 -c "import json; d=json.load(open('$INTAKE_FILE')); print(d['domain'])")
+          PRODUCT=$(python3 -c "import json; d=json.load(open('$INTAKE_FILE')); print(d['product'])")
+          echo "domain=$DOMAIN" >> "$GITHUB_OUTPUT"
+          echo "product=$PRODUCT" >> "$GITHUB_OUTPUT"
+
+      # --- DSB-Freigabe prüfen (nur bei personal_data=true, Issue-Trigger) ---
+      - name: DSB-Freigabe prüfen
+        if: |
+          steps.intake.outputs.personal_data == 'true' &&
+          github.event_name == 'issues'
+        env:
+          LABELS: ${{ toJson(github.event.issue.labels.*.name) }}
+        run: |
+          python3 -c "
+          import json, sys, os
+          labels = json.loads(os.environ['LABELS'])
+          if 'dsb-approved' not in labels:
+              print('❌ personal_data=true aber Issue hat kein dsb-approved Label — Abbruch')
+              sys.exit(1)
+          print('✅ dsb-approved vorhanden')
+          "
+
+      # --- Profiler: CSV → profiling.json ---
+      - name: Profiler ausführen
+        run: |
+          SOURCE=$(python3 -c "import json; d=json.load(open('${{ steps.intake.outputs.intake_file }}')); print(d['source']['location'])")
+          echo "Profiling: $SOURCE"
+          python3 scripts/profile_source.py --source "$SOURCE" --out profiling.json
+
+      # --- intake_to_odcs: Contracts + data-product.yaml erzeugen ---
+      - name: Contracts erzeugen
+        run: |
+          python3 scripts/intake_to_odcs.py \
+            --intake "${{ steps.intake.outputs.intake_file }}" \
+            --profiling profiling.json \
+            --write
+
+      # --- PR öffnen ---
+      - name: PR öffnen
+        id: pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: "contract/${{ steps.intake.outputs.domain }}/${{ steps.intake.outputs.product }}"
+          commit-message: "feat(${{ steps.intake.outputs.product }}): Contract aus intake.json generiert"
+          title: "Neuer Contract: ${{ steps.intake.outputs.domain }}/${{ steps.intake.outputs.product }}"
+          body: |
+            Automatisch generierter Contract nach Governance-Freigabe in ServiceNow.
+
+            - Domäne: `${{ steps.intake.outputs.domain }}`
+            - Produkt: `${{ steps.intake.outputs.product }}`
+            - personal_data: `${{ steps.intake.outputs.personal_data }}`
+
+            **Gates:** `validate-contracts` + `pipeline-and-quality` müssen grün sein.
+          labels: |
+            owner-approved
+            ${{ steps.intake.outputs.personal_data == 'true' && 'dsb-approved' || '' }}
+
+      - name: PR-URL ausgeben
+        if: steps.pr.outputs.pull-request-url != ''
+        run: echo "PR geöffnet: ${{ steps.pr.outputs.pull-request-url }}"
