@@ -5,6 +5,9 @@ on:
     paths: ["domains/**", "pipeline/**", "scripts/run_quality.py", "data/**"]
   workflow_dispatch:
 
+env:
+  OUTPUT_CONTRACT: domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr.output.odcs.yaml
+
 jobs:
   pipeline:
     runs-on: ubuntu-latest
@@ -13,11 +16,33 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install -r requirements.txt
+
       - name: Ingestion (dlt -> DuckDB)
         run: python pipeline/ingest/load_csv.py
-      # TODO(Workstream C): dbt build aktivieren, sobald Modelle laufen
-      # - name: Transform (dbt-duckdb)
-      #   working-directory: pipeline/dbt
-      #   run: dbt build --profiles-dir .
-      - name: Quality Gate
-        run: python scripts/run_quality.py --contract domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr.output.odcs.yaml --table radverkehr_tageswerte
+
+      - name: Transform (dbt-duckdb)
+        working-directory: pipeline/dbt
+        run: dbt build --profiles-dir .
+
+      - name: Quality Gate (Contract-Regeln vs. materialisierte Daten)
+        run: >-
+          python scripts/run_quality.py
+          --contract "$OUTPUT_CONTRACT"
+          --table radverkehr_tageswerte
+
+      - name: Output Port (Parquet/CSV)
+        run: python pipeline/export_output_port.py --object radverkehr_tageswerte --out-dir output
+
+      - name: Access-Policy aus Contract ableiten
+        run: >-
+          python scripts/apply_access.py
+          --contract "$OUTPUT_CONTRACT"
+          --out-sql output/grants.sql --out-policy output/access-policy.json
+
+      - name: Artefakte hochladen (Output Port + Policy)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: output-port
+          path: output/
+          if-no-files-found: ignore

@@ -1,11 +1,12 @@
 # Lokale CKAN für die Demo (Workstream C).
 # Bewusst minimal; ckan_publish.py spricht die CKAN-API (package_create/update).
-# TODO(Workstream C): Image-Tag/ENV gegen eine lauffähige CKAN-Demo verifizieren
-#   (z.B. ckan/ckan-dev oder ein schlankes ckan+postgres+solr/redis-Setup).
-# Für DCAT-AP.de-Export später: ckanext-dcat aktivieren.
+# Images = offizielle ckan-docker-Images (2.10-Linie). Healthchecks stellen sicher,
+# dass CKAN erst startet, wenn db/solr/redis bereit sind (häufigste Fehlerursache).
+# Hinweis: Image-Pull/Boot wurde lokal nicht getestet (kein Docker in der Dev-Umgebung).
+# Für DCAT-AP.de-Export später: ckanext-dcat im CKAN-Image aktivieren.
 services:
   ckan:
-    image: ckan/ckan-dev:2.10            # TODO: Tag prüfen/pinnen
+    image: ckan/ckan-dev:2.10
     ports:
       - "5000:5000"
     environment:
@@ -13,17 +14,35 @@ services:
       CKAN_SQLALCHEMY_URL: postgresql://ckan:ckan@db/ckan
       CKAN_REDIS_URL: redis://redis:6379/0
       CKAN_SOLR_URL: http://solr:8983/solr/ckan
-    depends_on: [db, redis, solr]
+    depends_on:
+      db: { condition: service_healthy }
+      solr: { condition: service_healthy }
+      redis: { condition: service_healthy }
 
   db:
-    image: ckan/ckan-postgres-dev:2.10   # TODO: Tag prüfen
+    image: ckan/ckan-postgres-dev:2.10
     environment:
       POSTGRES_PASSWORD: ckan
       POSTGRES_USER: ckan
       POSTGRES_DB: ckan
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ckan"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   solr:
-    image: ckan/ckan-solr:2.10-solr9     # TODO: Tag prüfen
+    image: ckan/ckan-solr:2.10-solr9
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8983/solr/ckan/admin/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
