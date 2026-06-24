@@ -1,13 +1,17 @@
 name: publish-ckan-catalog
-# Nach Merge auf main: Metadaten nach CKAN publizieren + Katalogseite rendern.
+# Nach Merge auf main: komplette Strecke in CI — Pipeline bauen (dlt -> dbt),
+# Output Port exportieren und Metadaten + bereinigte Daten nach CKAN publizieren.
 on:
   push:
     branches: [main]
-    paths: ["domains/**"]
+    paths: ["domains/**", "pipeline/**", "data/**", "scripts/ckan_publish.py"]
   workflow_dispatch:
 
 permissions:
   contents: write
+
+env:
+  OUTPUT_CONTRACT: domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr.output.odcs.yaml
 
 jobs:
   publish:
@@ -15,11 +19,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: pip install pyyaml requests
-      # TODO(Workstream C): lokale CKAN bereitstellen (ckan/docker-compose.yml) oder Ziel-CKAN konfigurieren
+        with: { python-version: "3.12" }   # dbt-duckdb läuft auf 3.12 (nicht 3.13/3.14)
+      - run: pip install -r requirements.txt
+
+      # --- Pipeline bauen: Rohdaten -> typisierter dbt-Mart (Output Port) ---
+      - name: Ingestion (dlt -> DuckDB)
+        run: python pipeline/ingest/load_csv.py
+      - name: Transform (dbt-duckdb)
+        working-directory: pipeline/dbt
+        run: dbt build --profiles-dir .
+      - name: Output Port exportieren (CSV/Parquet)
+        run: python pipeline/export_output_port.py --object radverkehr_tageswerte --out-dir output
+
+      # --- Nach CKAN publizieren: Metadaten (DCAT-AP.de) + bereinigte Daten ---
+      # CKAN_URL = Repo-Variable, CKAN_API_KEY = Secret. Ohne Secret: Dry-Run (kein Fehler).
       - name: Publish to CKAN
-        run: python scripts/ckan_publish.py --contract domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr.output.odcs.yaml
+        env:
+          CKAN_URL: ${{ vars.CKAN_URL }}
+          CKAN_API_KEY: ${{ secrets.CKAN_API_KEY }}
+        run: |
+          python scripts/ckan_publish.py \
+            --contract "$OUTPUT_CONTRACT" \
+            --ckan-url "${CKAN_URL:-https://ckan.davb.dev}" \
+            --api-key "$CKAN_API_KEY" \
+            --data-file output/radverkehr_tageswerte.csv
+
       - name: Render catalog page
         run: python scripts/render_catalog.py --product domains/mobilitaetsreferat/data-products/radverkehr --write
       # TODO(Workstream B): gerenderte README.md zurückcommitten (falls geändert).
