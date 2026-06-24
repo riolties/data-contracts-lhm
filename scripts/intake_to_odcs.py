@@ -79,12 +79,15 @@ def _profiler_rule_to_odcs(rule: dict, table: str) -> dict | None:
                     {"property": "column", "value": col},
                 ]}
     if r == "unique":
-        col = rule["column"]
-        return {**base, "name": f"unique_{col}",
-                "description": f"Spalte {col} eindeutig.",
+        cols = rule.get("columns") or [rule["column"]]
+        col_list = ", ".join(cols)
+        name = "unique_" + "_".join(cols)
+        label = "Spalte" if len(cols) == 1 else "Spaltenkombination"
+        return {**base, "name": name, "dimension": "uniqueness",
+                "description": f"{label} {col_list} eindeutig.",
                 "customProperties": [
                     {"property": "engine", "value": "sql"},
-                    {"property": "query", "value": f"SELECT count(*) FROM (SELECT {col} FROM {table} GROUP BY {col} HAVING count(*) > 1)"},
+                    {"property": "query", "value": f"SELECT count(*) FROM (SELECT {col_list} FROM {table} GROUP BY {col_list} HAVING count(*) > 1)"},
                     {"property": "expect", "value": 0},
                 ]}
     if r == "range":
@@ -115,6 +118,8 @@ def _normalize_rule(rule: dict, col_map: dict[str, str]) -> dict:
     r = dict(rule)
     if "column" in r:
         r["column"] = col_map.get(r["column"], r["column"])
+    if "columns" in r:
+        r["columns"] = [col_map.get(c, c) for c in r["columns"]]
     if "expr" in r:
         expr = r["expr"]
         for old, new in col_map.items():
@@ -159,8 +164,21 @@ def build_contracts(intake: dict, profiling: dict) -> dict:
     custom_props = _governance_custom_props(intake)
 
     intake_col_map: dict[str, dict] = {c["name"]: c for c in intake.get("columns", [])}
+    # Als 'internal' markierte Quellspalten gehören NICHT in den Output-Port
+    # (Input-Contract behält sie als Rohdaten). Output = bewusste Projektion.
+    internal_cols: set[str] = {n for n, c in intake_col_map.items() if c.get("internal")}
     profiler_cols: list[dict] = profiling.get("columns", [])
-    quality_rules: list[dict] = profiling.get("quality_rules", [])
+
+    # Profiler-Kandidaten + intake.quality_rules mergen: der Mensch (intake) überschreibt
+    # bzw. ergänzt die beobachteten Kandidaten (intake.schema: "überschrieben oder ergänzt").
+    def _rule_key(r: dict) -> tuple:
+        cols = tuple(r["columns"]) if r.get("columns") else None
+        return (r.get("rule"), r.get("column"), cols, r.get("expr"))
+
+    merged: dict[tuple, dict] = {_rule_key(r): r for r in profiling.get("quality_rules", [])}
+    for r in intake.get("quality_rules", []):
+        merged[_rule_key(r)] = r
+    quality_rules: list[dict] = list(merged.values())
 
     input_table = f"{product}_rohdaten"
     output_table = f"{product}_tageswerte"
@@ -231,9 +249,11 @@ def build_contracts(intake: dict, profiling: dict) -> dict:
         "customProperties": custom_props,
     }
 
-    # --- OUTPUT: Properties (normalisierter Name) ---
+    # --- OUTPUT: Properties (normalisierter Name; interne Spalten projiziert) ---
     output_props = []
     for c in profiler_cols:
+        if c["name"] in internal_cols:
+            continue
         output_props.append({
             "name": col_map[c["name"]],
             "logicalType": c["logical_type"],
@@ -242,9 +262,19 @@ def build_contracts(intake: dict, profiling: dict) -> dict:
             "description": _col_description(c["name"], intake_col_map),
         })
 
-    # Output-Quality: alle Regeln, Spaltennamen normalisiert
+    def _refs_internal(rule: dict) -> bool:
+        cols = set()
+        if rule.get("column"):
+            cols.add(rule["column"])
+        if rule.get("columns"):
+            cols.update(rule["columns"])
+        return bool(cols & internal_cols)
+
+    # Output-Quality: Regeln auf interne Spalten entfallen, Spaltennamen normalisiert
     output_quality = []
     for rule in quality_rules:
+        if _refs_internal(rule):
+            continue
         norm = _normalize_rule(rule, col_map)
         q = _profiler_rule_to_odcs(norm, output_table)
         if q:

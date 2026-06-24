@@ -1,5 +1,5 @@
 -- Workstream C — Output Port: stabile, konsumierbare View.
--- Signatur = Output-Contract-Schema (radverkehr-tageswerte.output.odcs.yaml):
+-- Signatur = Output-Contract-Schema (radverkehr.output.odcs.yaml):
 -- genau diese 10 Spalten in dieser Reihenfolge. Interne Spalten (uhrzeit_*,
 -- dlt-Technik) werden nicht durchgereicht. Konsumenten lesen ausschließlich
 -- diese View (siehe docs/access-and-output-port.md).

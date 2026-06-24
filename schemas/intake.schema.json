@@ -76,7 +76,8 @@
           "physical_type": { "type": "string" },
           "required": { "type": "boolean" },
           "description": { "type": "string", "description": "Fachliche Beschreibung (Mensch)." },
-          "classification": { "type": "string", "enum": ["public", "internal", "confidential"] }
+          "classification": { "type": "string", "enum": ["public", "internal", "confidential"] },
+          "internal": { "type": "boolean", "default": false, "description": "true = interne Quellspalte, NICHT im Output-Port (Input-Contract behält sie). Generator projiziert sie aus dem Output-Contract heraus." }
         }
       }
     },
@@ -88,7 +89,8 @@
         "required": ["rule"],
         "properties": {
           "rule": { "type": "string", "enum": ["not_null", "unique", "range", "expression"] },
-          "column": { "type": "string" },
+          "column": { "type": "string", "description": "Einzelspalte (not_null, range, unique)." },
+          "columns": { "type": "array", "items": { "type": "string" }, "description": "Spaltenliste für zusammengesetzte Uniqueness (z.B. Primärschlüssel)." },
           "min": { "type": "number" },
           "max": { "type": "number" },
           "expr": { "type": "string" }

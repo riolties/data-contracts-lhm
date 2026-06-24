@@ -1,0 +1,131 @@
+version: 1.0.0
+apiVersion: v3.1.0
+kind: DataContract
+id: lhm:mobilitaetsreferat:input:radverkehr
+status: active
+name: Radverkehr Tageswerte München — Rohdaten
+domain: mobilitaetsreferat
+description:
+  purpose: Tägliche Radverkehrszahlen je Dauerzählstelle inkl. Wetter.
+  usage: Input-Port des Datenprodukts radverkehr — Quelle für dlt-Ingestion.
+  limitations: Nur Dauerzählstellen; Wetter aggregiert je Tag.
+servers:
+- server: csv-export
+  type: local
+  description: CSV File-Export (data/sample_radverkehr_tageswerte_2025_01.csv).
+  path: data/sample_radverkehr_tageswerte_2025_01.csv
+  format: csv
+schema:
+- name: radverkehr_rohdaten
+  logicalType: object
+  physicalType: csv
+  physicalName: sample_radverkehr_tageswerte_2025_01.csv
+  dataGranularityDescription: Eine Zeile je Datensatz.
+  properties:
+  - name: datum
+    logicalType: date
+    physicalType: DATE
+    required: true
+    description: Zähltag (Quellformat YYYY.MM.DD).
+  - name: uhrzeit_start
+    logicalType: time
+    physicalType: TIME
+    required: true
+    description: Beginn des Zählintervalls (in der Quelle konstant 00:00 = Tagesbeginn).
+  - name: uhrzeit_ende
+    logicalType: string
+    physicalType: VARCHAR
+    required: true
+    description: Ende des Zählintervalls; Quelle nutzt '.' als Trenner (23.59) — im
+      Staging zu normalisieren.
+  - name: zaehlstelle
+    logicalType: string
+    physicalType: VARCHAR
+    required: true
+    description: Name der Dauerzählstelle (z.B. Arnulf, Erhardt).
+  - name: richtung_1
+    logicalType: integer
+    physicalType: INTEGER
+    required: true
+    description: Gezählte Radfahrten in Richtung 1.
+  - name: richtung_2
+    logicalType: integer
+    physicalType: INTEGER
+    required: true
+    description: Gezählte Radfahrten in Richtung 2.
+  - name: gesamt
+    logicalType: integer
+    physicalType: INTEGER
+    required: true
+    description: Gesamtzahl Radfahrten am Tag (= richtung_1 + richtung_2).
+  - name: min-temp
+    logicalType: number
+    physicalType: DOUBLE
+    required: true
+    description: Tagestiefsttemperatur in °C (Begleitwetter).
+  - name: max-temp
+    logicalType: number
+    physicalType: DOUBLE
+    required: true
+    description: Tageshöchsttemperatur in °C (Begleitwetter).
+  - name: niederschlag
+    logicalType: number
+    physicalType: DOUBLE
+    required: true
+    description: Niederschlagsmenge in mm (Begleitwetter).
+  - name: bewoelkung
+    logicalType: integer
+    physicalType: INTEGER
+    required: true
+    description: Bewölkungsgrad in Prozent (0–100, Begleitwetter).
+  - name: sonnenstunden
+    logicalType: number
+    physicalType: DOUBLE
+    required: true
+    description: Sonnenscheindauer in Stunden (Begleitwetter).
+  quality:
+  - type: text
+    dimension: accuracy
+    severity: error
+    name: gesamt___richtung_1___richtung_2
+    description: 'Ausdruck: gesamt = richtung_1 + richtung_2.'
+    customProperties:
+    - property: engine
+      value: sql
+    - property: query
+      value: SELECT count(*) FROM radverkehr_rohdaten WHERE NOT (gesamt = richtung_1
+        + richtung_2)
+    - property: expect
+      value: 0
+  - type: text
+    name: row_count_min
+    description: Mindestens eine Zeile geliefert.
+    dimension: completeness
+    severity: error
+    customProperties:
+    - property: engine
+      value: row_count_min
+    - property: min
+      value: 1
+slaProperties:
+- property: frequency
+  value: 1
+  unit: d
+customProperties:
+- property: classification
+  value: public
+- property: contract_status
+  value: active
+- property: personal_data
+  value: false
+- property: open_data_candidate
+  value: true
+- property: license
+  value: https://www.govdata.de/dl-de/by-2-0
+- property: spatial
+  value: https://sws.geonames.org/2867714/
+- property: accrual_periodicity
+  value: P1D
+- property: govdata_category
+  value:
+  - http://publications.europa.eu/resource/authority/data-theme/TRAN
