@@ -23,9 +23,11 @@ PII_HINTS = ("name", "vorname", "nachname", "adresse", "strasse", "geburt", "ema
 
 # Datum YYYY.MM.DD (LHM-opendata-Konvention) bzw. ISO YYYY-MM-DD.
 _DATE_RE = re.compile(r"^\d{4}[.\-/]\d{2}[.\-/]\d{2}$")
-# Uhrzeit HH:MM(:SS) — verlangt ':' als Trenner, damit '23.59' nicht fälschlich
-# als Zeit (statt Dezimalzahl) erkannt wird (echtes Quell-Qualitätssignal).
+# Uhrzeit HH:MM(:SS) — verlangt ':' als Trenner.
 _TIME_RE = re.compile(r"^\d{1,2}:\d{2}(?::\d{2})?$")
+# Uhrzeit mit Punkt als Trenner (LHM-Quell-Konvention, z.B. 23.59 in uhrzeit_ende).
+# Kein float — als string typisieren, damit downstream nicht mit einer Dezimalzahl rechnet.
+_DOT_TIME_RE = re.compile(r"^(?:[01]?\d|2[0-3])\.[0-5]\d$")
 _INT_RE = re.compile(r"^[+-]?\d+$")
 _FLOAT_RE = re.compile(r"^[+-]?(\d+([.,]\d*)?|[.,]\d+)$")
 
@@ -44,6 +46,8 @@ def _infer_type(values: list[str]) -> str:
         return "string"
     if all(_INT_RE.match(v) for v in values):
         return "integer"
+    if all(_DOT_TIME_RE.match(v) for v in values):
+        return "string"
     if all(_FLOAT_RE.match(v) for v in values):
         return "number"
     if all(_DATE_RE.match(v) for v in values):
@@ -171,6 +175,9 @@ def main(argv=None) -> int:
         result = profile_csv(args.source)
     except FileNotFoundError:
         sys.stderr.write(f"Quelle nicht gefunden: {args.source}\n")
+        return 2
+    except StopIteration:
+        sys.stderr.write(f"Quelle ist leer (kein Header): {args.source}\n")
         return 2
 
     out = json.dumps(result, ensure_ascii=False, indent=2)

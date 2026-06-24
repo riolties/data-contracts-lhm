@@ -42,9 +42,21 @@ Das vendored ODCS-Schema lässt unter `unevaluatedProperties: false` bei `qualit
 | --- | --- | --- |
 | `sql` | `query`, `expect` | Query liefert Wert (i.d.R. Verstoßzahl); muss `expect` (meist 0) entsprechen |
 | `not_null` | `column` | Spalte ohne Null |
-| `unique` | `columns` | Spaltenkombination eindeutig (PK) |
 | `range` | `column`, `min`, `max` | Werte im Bereich |
 | `row_count_min` | `min` | mindestens `min` Zeilen |
+
+Alle Parameter sind skalare Strings. Für Mehrspaltenbedingungen (z.B. PK-Uniqueness) wird `engine: sql` mit einer entsprechenden `query` verwendet — kein eigenständiger `unique`-Engine-Typ mit Listparametern.
+
+### Mapping Profiler-Output → ODCS-Contract-Quality
+
+`profile_source.py` emittiert Kandidaten-Quality-Regeln im flachen Format (`intake.schema.json → quality_rules`). `intake_to_odcs.py` (Schritt 2) übersetzt diese in die ODCS-`customProperties`-Konvention:
+
+| Profiler `rule` | Profiler Parameter | ODCS `engine` | ODCS Parameter |
+| --- | --- | --- | --- |
+| `not_null` | `column` | `not_null` | `column` |
+| `unique` | `column` | `sql` | `query: "SELECT count(*) FROM (SELECT {column} FROM {table} GROUP BY {column} HAVING count(*) > 1)"`, `expect: 0` |
+| `range` | `column`, `min`, `max` | `range` | `column`, `min`, `max` |
+| `expression` | `expr: "c = a + b"` | `sql` | `query: "SELECT count(*) FROM {table} WHERE NOT ({expr})"`, `expect: 0` |
 
 `severity: error` blockt das Gate, `warning` meldet nur. Beispiel siehe [Output-Contract](../domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr-tageswerte.output.odcs.yaml).
 

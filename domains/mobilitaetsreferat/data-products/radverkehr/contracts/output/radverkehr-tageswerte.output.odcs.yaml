@@ -133,8 +133,9 @@ schema:
         dimension: uniqueness
         severity: error
         customProperties:
-          - { property: engine, value: unique }
-          - { property: columns, value: [datum, zaehlstelle] }
+          - { property: engine, value: sql }
+          - { property: query, value: "SELECT count(*) FROM (SELECT datum, zaehlstelle FROM radverkehr_tageswerte GROUP BY datum, zaehlstelle HAVING count(*) > 1)" }
+          - { property: expect, value: 0 }
       - type: text
         name: gesamt_not_null
         description: Pflichtfeld gesamt ohne Null.
