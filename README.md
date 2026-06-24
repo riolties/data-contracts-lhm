@@ -9,6 +9,7 @@ Hackathon-Blueprint: **Data Contracts & Data Products als Code** für die Landes
 - 🔄 [Intake-, Profiling- & Freigabe-Workflow](docs/workflow-intake-approval.md) — ServiceNow ↔ GitLab
 - 🔐 [Output Port & Zugriffskontrolle](docs/access-and-output-port.md)
 - 🏛 [Architektur](docs/architecture.md) · [Governance](docs/governance.md) · [Contributing](docs/contributing.md)
+- 🔑 [CI-Berechtigungen](docs/ci-permissions.md) — Auto-PR aus der Pipeline (PAT-Setup, GitHub-App-Zielbild)
 - 🤝 [Claude Code Working Agreement](docs/claude-code-working-agreement.md) — Branches, Modellwahl, Stunde-0-Sync
 
 ## Repo-Struktur

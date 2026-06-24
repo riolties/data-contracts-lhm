@@ -119,7 +119,12 @@ jobs:
         id: pr
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Fine-grained PAT (secrets.CI_PAT) statt GITHUB_TOKEN: mit dem
+          # GITHUB_TOKEN erzeugte PRs lösen die Gate-Workflows nicht aus
+          # (validate-contracts / pipeline-and-quality). Fällt der PAT noch,
+          # wird auf GITHUB_TOKEN zurückgefallen (PR öffnet, Gates müssen dann
+          # manuell re-getriggert werden). Setup: docs/ci-permissions.md
+          token: ${{ secrets.CI_PAT || secrets.GITHUB_TOKEN }}
           branch: "contract/${{ steps.intake.outputs.domain }}/${{ steps.intake.outputs.product }}"
           commit-message: "feat(${{ steps.intake.outputs.product }}): Contract aus intake.json generiert"
           title: "Neuer Contract: ${{ steps.intake.outputs.domain }}/${{ steps.intake.outputs.product }}"
