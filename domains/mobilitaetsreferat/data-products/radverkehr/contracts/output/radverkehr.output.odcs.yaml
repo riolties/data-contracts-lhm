@@ -32,17 +32,6 @@ schema:
     physicalType: DATE
     required: true
     description: Zähltag (Quellformat YYYY.MM.DD).
-  - name: uhrzeit_start
-    logicalType: time
-    physicalType: TIME
-    required: true
-    description: Beginn des Zählintervalls (in der Quelle konstant 00:00 = Tagesbeginn).
-  - name: uhrzeit_ende
-    logicalType: string
-    physicalType: VARCHAR
-    required: true
-    description: Ende des Zählintervalls; Quelle nutzt '.' als Trenner (23.59) — im
-      Staging zu normalisieren.
   - name: zaehlstelle
     logicalType: string
     physicalType: VARCHAR
@@ -99,26 +88,6 @@ schema:
       value: not_null
     - property: column
       value: datum
-  - type: text
-    dimension: accuracy
-    severity: error
-    name: not_null_uhrzeit_start
-    description: Spalte uhrzeit_start ohne Nullwerte.
-    customProperties:
-    - property: engine
-      value: not_null
-    - property: column
-      value: uhrzeit_start
-  - type: text
-    dimension: accuracy
-    severity: error
-    name: not_null_uhrzeit_ende
-    description: Spalte uhrzeit_ende ohne Nullwerte.
-    customProperties:
-    - property: engine
-      value: not_null
-    - property: column
-      value: uhrzeit_ende
   - type: text
     dimension: accuracy
     severity: error

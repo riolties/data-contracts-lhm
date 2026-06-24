@@ -76,7 +76,8 @@
           "physical_type": { "type": "string" },
           "required": { "type": "boolean" },
           "description": { "type": "string", "description": "Fachliche Beschreibung (Mensch)." },
-          "classification": { "type": "string", "enum": ["public", "internal", "confidential"] }
+          "classification": { "type": "string", "enum": ["public", "internal", "confidential"] },
+          "internal": { "type": "boolean", "default": false, "description": "true = interne Quellspalte, NICHT im Output-Port (Input-Contract behält sie). Generator projiziert sie aus dem Output-Contract heraus." }
         }
       }
     },

@@ -25,8 +25,8 @@
   },
   "columns": [
     {"name": "datum", "logical_type": "date", "description": "Zähltag (Quellformat YYYY.MM.DD).", "classification": "public"},
-    {"name": "uhrzeit_start", "logical_type": "time", "description": "Beginn des Zählintervalls (in der Quelle konstant 00:00 = Tagesbeginn)."},
-    {"name": "uhrzeit_ende", "logical_type": "string", "description": "Ende des Zählintervalls; Quelle nutzt '.' als Trenner (23.59) — im Staging zu normalisieren."},
+    {"name": "uhrzeit_start", "logical_type": "time", "description": "Beginn des Zählintervalls (in der Quelle konstant 00:00 = Tagesbeginn).", "internal": true},
+    {"name": "uhrzeit_ende", "logical_type": "string", "description": "Ende des Zählintervalls; Quelle nutzt '.' als Trenner (23.59) — im Staging zu normalisieren.", "internal": true},
     {"name": "zaehlstelle", "logical_type": "string", "description": "Name der Dauerzählstelle (z.B. Arnulf, Erhardt).", "classification": "public"},
     {"name": "richtung_1", "logical_type": "integer", "description": "Gezählte Radfahrten in Richtung 1."},
     {"name": "richtung_2", "logical_type": "integer", "description": "Gezählte Radfahrten in Richtung 2."},

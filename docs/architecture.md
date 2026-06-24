@@ -24,6 +24,8 @@ Quelle (file_export/        Input Port              Output Port            Konsu
 - **Input Port** = Vertrag mit der Quelle: was kommt rein, in welcher (Roh-)Form. Im Demo: CSV-File-Export. Roh, unbereinigt — der Contract dokumentiert Quell-Eigenheiten (z.B. `uhrzeit_ende` mit `.`-Trenner) als `limitations`.
 - **Output Port** = stabiler Vertrag mit Konsumenten: bereinigter dbt-Mart `radverkehr_tageswerte` (View im Hub) + Parquet/CSV-Export. Eine Zeile je Zählstelle und Tag (PK `datum + zaehlstelle`).
 
+> **Output-Port als Projektion:** Der Input-Contract beschreibt **alle** Quellspalten (roh), der Output-Contract nur die **konsumierbare Teilmenge**. Interne/technische Spalten (z.B. konstante `uhrzeit_*`) werden im Governance-Input als `"internal": true` markiert (`intake.json.columns[]`); `intake_to_odcs.py` projiziert sie aus dem Output-Contract heraus — so deckt sich der generierte Output-Contract exakt mit dem dbt-Mart (Spalten + Reihenfolge).
+
 ## Namenskonventionen
 | Element | Konvention | Beispiel |
 | --- | --- | --- |

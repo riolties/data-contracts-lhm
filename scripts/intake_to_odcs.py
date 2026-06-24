@@ -164,6 +164,9 @@ def build_contracts(intake: dict, profiling: dict) -> dict:
     custom_props = _governance_custom_props(intake)
 
     intake_col_map: dict[str, dict] = {c["name"]: c for c in intake.get("columns", [])}
+    # Als 'internal' markierte Quellspalten gehören NICHT in den Output-Port
+    # (Input-Contract behält sie als Rohdaten). Output = bewusste Projektion.
+    internal_cols: set[str] = {n for n, c in intake_col_map.items() if c.get("internal")}
     profiler_cols: list[dict] = profiling.get("columns", [])
 
     # Profiler-Kandidaten + intake.quality_rules mergen: der Mensch (intake) überschreibt
@@ -246,9 +249,11 @@ def build_contracts(intake: dict, profiling: dict) -> dict:
         "customProperties": custom_props,
     }
 
-    # --- OUTPUT: Properties (normalisierter Name) ---
+    # --- OUTPUT: Properties (normalisierter Name; interne Spalten projiziert) ---
     output_props = []
     for c in profiler_cols:
+        if c["name"] in internal_cols:
+            continue
         output_props.append({
             "name": col_map[c["name"]],
             "logicalType": c["logical_type"],
@@ -257,9 +262,19 @@ def build_contracts(intake: dict, profiling: dict) -> dict:
             "description": _col_description(c["name"], intake_col_map),
         })
 
-    # Output-Quality: alle Regeln, Spaltennamen normalisiert
+    def _refs_internal(rule: dict) -> bool:
+        cols = set()
+        if rule.get("column"):
+            cols.add(rule["column"])
+        if rule.get("columns"):
+            cols.update(rule["columns"])
+        return bool(cols & internal_cols)
+
+    # Output-Quality: Regeln auf interne Spalten entfallen, Spaltennamen normalisiert
     output_quality = []
     for rule in quality_rules:
+        if _refs_internal(rule):
+            continue
         norm = _normalize_rule(rule, col_map)
         q = _profiler_rule_to_odcs(norm, output_table)
         if q:
