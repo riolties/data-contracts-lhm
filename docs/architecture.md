@@ -24,11 +24,13 @@ Quelle (file_export/        Input Port              Output Port            Konsu
 - **Input Port** = Vertrag mit der Quelle: was kommt rein, in welcher (Roh-)Form. Im Demo: CSV-File-Export. Roh, unbereinigt — der Contract dokumentiert Quell-Eigenheiten (z.B. `uhrzeit_ende` mit `.`-Trenner) als `limitations`.
 - **Output Port** = stabiler Vertrag mit Konsumenten: bereinigter dbt-Mart `radverkehr_tageswerte` (View im Hub) + Parquet/CSV-Export. Eine Zeile je Zählstelle und Tag (PK `datum + zaehlstelle`).
 
+> **Output-Port als Projektion:** Der Input-Contract beschreibt **alle** Quellspalten (roh), der Output-Contract nur die **konsumierbare Teilmenge**. Interne/technische Spalten (z.B. konstante `uhrzeit_*`) werden im Governance-Input als `"internal": true` markiert (`intake.json.columns[]`); `intake_to_odcs.py` projiziert sie aus dem Output-Contract heraus — so deckt sich der generierte Output-Contract exakt mit dem dbt-Mart (Spalten + Reihenfolge).
+
 ## Namenskonventionen
 | Element | Konvention | Beispiel |
 | --- | --- | --- |
 | Domäne / Produkt | lowercase, `-`/`_` | `mobilitaetsreferat`, `radverkehr` |
-| Contract-Datei | `<id>.input.odcs.yaml` / `<id>.output.odcs.yaml` | `opendata-raddaten.input.odcs.yaml` |
+| Contract-Datei | `<produkt>.input.odcs.yaml` / `<produkt>.output.odcs.yaml` | `radverkehr.input.odcs.yaml` |
 | Contract-`id` | `lhm:<domain>:<port>:<produkt>` | `lhm:mobilitaetsreferat:output:radverkehr` |
 | Mart/Objekt | `<produkt>_<granularität>` | `radverkehr_tageswerte` |
 
@@ -58,7 +60,7 @@ Alle Parameter sind skalare Strings. Für Mehrspaltenbedingungen (z.B. PK-Unique
 | `range` | `column`, `min`, `max` | `range` | `column`, `min`, `max` |
 | `expression` | `expr: "c = a + b"` | `sql` | `query: "SELECT count(*) FROM {table} WHERE NOT ({expr})"`, `expect: 0` |
 
-`severity: error` blockt das Gate, `warning` meldet nur. Beispiel siehe [Output-Contract](../domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr-tageswerte.output.odcs.yaml).
+`severity: error` blockt das Gate, `warning` meldet nur. Beispiel siehe [Output-Contract](../domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr.output.odcs.yaml).
 
 ## Profiler (Pipeline-Schritt 1 nach Freigabe)
 `scripts/profile_source.py` ist der **erste Schritt der Post-Freigabe-Pipeline**: nach der Governance-Freigabe in ServiceNow liest es die CSV aus `source.location` und erzeugt `profiling.json` mit Spalten/Typen, Null-/Unique-Quoten, Kandidaten-Quality (not-null, range, unique, Summen-Konsistenz wie `gesamt = richtung_1 + richtung_2`) und Freshness (`max(datum)`). Der Datenverantwortliche tippt **keine Spalten** ins SN-Formular — die kommen automatisch aus der Quelle (Datenzugriff erst nach Freigabe). `intake_to_odcs.py` (Schritt 2, Workstream B) merged `profiling.json` + Governance-Felder zum finalen Contract. Siehe [Profiler-Rolle im Plan](hackathon-plan.md).

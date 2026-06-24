@@ -83,8 +83,8 @@ data-contracts-lhm/
 │   │   └── data-products/radverkehr/
 │   │       ├── data-product.yaml        # source.type: file_export · Port-Topologie
 │   │       ├── contracts/
-│   │       │   ├── input/opendata-raddaten.input.odcs.yaml
-│   │       │   └── output/radverkehr-tageswerte.output.odcs.yaml
+│   │       │   ├── input/radverkehr.input.odcs.yaml
+│   │       │   └── output/radverkehr.output.odcs.yaml
 │   │       └── README.md                # auto-generierte Katalogseite
 │   ├── kreisverwaltungsreferat/        # Pilot-Produzent KVR (Platzhalter)
 │   │   ├── domain.yaml

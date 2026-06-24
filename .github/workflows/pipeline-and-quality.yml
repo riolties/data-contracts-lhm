@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  OUTPUT_CONTRACT: domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr-tageswerte.output.odcs.yaml
+  OUTPUT_CONTRACT: domains/mobilitaetsreferat/data-products/radverkehr/contracts/output/radverkehr.output.odcs.yaml
 
 jobs:
   pipeline:
