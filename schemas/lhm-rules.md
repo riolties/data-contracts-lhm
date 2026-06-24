@@ -22,7 +22,7 @@ Die LHM-Felder liegen in `customProperties[]` (Liste aus `{property, value}`).
 ## Freigabe-Regeln (approval-gate, nicht validate)
 - `owner-approved`-Label erforderlich (immer) → entspricht `owner_approval` in `customProperties`.
 - `dsb-approved`-Label erforderlich, wenn `personal_data: true` → entspricht `dpo_approval`.
-- Reihenfolge: `validate-contracts` + `pipeline-and-quality` müssen **grün** sein, bevor Freigabe zählt (Branch-Protection). Siehe [workflow-intake-approval.md](../docs/workflow-intake-approval.md).
+- Reihenfolge: Governance-Freigabe (SN/Labels) erfolgt **vor** dem GitLab-Trigger. Die technischen Gates (`validate-contracts`, `pipeline-and-quality`) laufen danach als Sicherheitsnetz auf dem MR. Scheitert ein Gate, bleibt der MR offen — keine erneute Governance-Freigabe nötig. Siehe [workflow-intake-approval.md](../docs/workflow-intake-approval.md).
 
 ## Hinweise zur Implementierung (Workstream B/C)
 - Regeln als Liste von Funktionen `(contract: dict) -> list[str]` (Fehler) umsetzen — leicht testbar.

@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """profile_source.py — Workstream A
 
-Liest eine Quelle (Demo: CSV File-Export) und leitet einen Draft ab:
+Liest eine Quelle (Demo: CSV File-Export) und erzeugt ein Profiling-Protokoll:
 Spalten/Typen/Nullable, Kandidaten-Quality-Regeln, PII-Verdacht, Freshness.
-Ausgabe: profiling.json (siehe docs/workflow-intake-approval.md, Phase 1).
+
+Hilfsmittel für den Datenverantwortlichen beim Ausfüllen des SN-Formulars —
+kein automatisierter Pipeline-Schritt. Die eigentliche technische Verifikation
+nach Freigabe übernimmt run_quality.py gegen die materialisierten Daten.
 
 Aufruf:
     python scripts/profile_source.py --source data/sample_radverkehr_tageswerte_2025_01.csv [--out profiling.json]

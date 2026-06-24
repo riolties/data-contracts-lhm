@@ -28,39 +28,42 @@ Ziel des Hackathons (3 Personen, 12 h): In einem **GitHub-Repo** (`riolties/data
 
 ```
 Quelle: CSV File-Export aus Fachverfahren (Raddaten)
-   │  profile_source.py  →  Schema + Kandidaten-Quality-Regeln (technisch)
+   │
    ▼
-Draft-ODCS (technisch)            ServiceNow-Katalogformular (Governance:
-   │                              Owner, Klassifizierung, Rechtsgrundlage,
-   │                              DSGVO-Flag, Open-Data, Beschreibungen)
-   └───────────────┬───────────────────────┘
-                   │ intake_to_odcs.py  (merge technisch + Governance)
-                   │ ServiceNow ──trigger(intake.json)──►  GitLab-CI öffnet MR
-                   ▼
-         PR/MR: data-product.yaml + *.odcs.yaml
-                   │
-     ┌─────────────┼───────────────┬───────────────────────────┐
-     ▼             ▼               ▼                           ▼
- validate-      approval-gate   PIPELINE-BUILD:            (auf PR)
- contracts     (Owner + DSB)    dlt: CSV → DuckDB(raw)
- (ODCS+LHM)                     dbt: raw → radverkehr_tageswerte
-                                quality-gate: Contract-Regeln + dbt-Tests
-                                              vs. materialisierte Daten
-     └─────────────┴───────────────┴───────────────────────────┘
-                   ▼ alle grün + Freigaben → Merge
+ServiceNow-Katalogformular — Datenverantwortliche/r füllt manuell aus:
+   Spalten + Typen, Owner, Klassifizierung, Rechtsgrundlage,
+   DSGVO-Flag, Open-Data, Beschreibungen
+   │
+   ▼  FREIGABE IN ServiceNow — vor jeder Datenverarbeitung
+   Stufe 1: Dateneigner (fachlich/rechtlich)
+   Stufe 2: DSB (nur wenn personal_data=true)
+   │
+   │  ERST NACH FREIGABE: ServiceNow triggert GitLab einmal
+   ▼
+intake_to_odcs.py  →  PR/MR: data-product.yaml + *.odcs.yaml
+   │
+   ┌─────────────────────────────────────┬───────────────────────────────────┐
+   ▼                                     ▼
+validate-contracts                  PIPELINE-BUILD:
+(ODCS+LHM)                          dlt: CSV → DuckDB(raw)
+                                     dbt: raw → radverkehr_tageswerte
+                                     quality-gate: Contract-Regeln + dbt-Tests
+                                                   vs. materialisierte Daten
+   └─────────────────────────────────────┴───────────────────────────────────┘
+                   ▼ alle grün → Auto-Merge
         publish-ckan-catalog → CKAN (lokal/Docker) + DCAT-AP.de-Extras
                               + gerenderte Katalogseite
 ```
 
-Kein Mensch tippt technisches Schema; kein LLM im kritischen Pfad.
+Kein LLM im kritischen Pfad. Governance-Freigabe (SN) und technische Validierung (GitLab-Gates) sind orthogonale Prüfungen — Freigabe betrifft „darf dieses Produkt existieren?", Gates betreffen technische Korrektheit. Scheitert ein Gate nach Freigabe, bleibt der MR offen; keine erneute Governance-Freigabe nötig.
 
 ---
 
 ## ServiceNow ↔ GitLab (Ziel-Architektur, im Plan festgeschrieben)
 
-- **Trigger statt Direkt-MR:** ServiceNow-Flow (IntegrationHub/REST) ruft nach Submit+Freigabe einen **GitLab Pipeline-Trigger** (Trigger-Token) auf und übergibt `intake.json`. Ein **CI-Job** legt Branch an, committet den Contract und öffnet den **MR** via `glab`/GitLab-API. Vorteil: Branch-/Layout-Logik bleibt versioniert im Repo; ServiceNow muss die Repo-Struktur nicht kennen.
-- **Freigabe:** Governance-Approval (Dateneigner, DSB) in **ServiceNow** (erreicht Nicht-Git-Nutzer LHM-weit); der freigegebene Request setzt MR-Approval via API bzw. gibt den Merge frei. Technischer Merge in GitLab.
-- **Hackathon-Abbildung:** `repository_dispatch` = Pipeline-Trigger; Action öffnet PR = CI öffnet MR; PR-Labels = ServiceNow-Approval-Stufen.
+- **Trigger nach Freigabe:** ServiceNow-Flow (IntegrationHub/REST) ruft **nach vollständiger Governance-Freigabe** einen **GitLab Pipeline-Trigger** (Trigger-Token) auf und übergibt `intake.json`. Ein **CI-Job** legt Branch an, committet den Contract und öffnet den **MR** via `glab`/GitLab-API. SN kennt kein Repo-Layout.
+- **Kopplung unidirektional:** SN → GitLab. Kein Rückkanal erforderlich. SN-Freigabe = Governance-Entscheidung (erlaubt? Rechtsgrundlage? DSB?); GitLab-Gates = technische Korrektheit. Beides sind orthogonale Prüfungen.
+- **Hackathon-Abbildung:** Approval-Labels (`owner-approved`, `dsb-approved`) auf dem Intake-Issue simulieren die SN-Freigabe und triggern `intake-to-contract.yml`; Action öffnet PR; technische Gates laufen auf dem PR; Auto-Merge bei grün.
 
 ---
 
@@ -106,14 +109,14 @@ data-contracts-lhm/
 
 ---
 
-## Profiler: Contract aus Daten (Kern der Erleichterung)
+## Profiler: Daten verstehen (Hilfsmittel, kein Pipeline-Schritt)
 
-`profile_source.py` liest die Quelle (Demo: CSV File-Export) und erzeugt einen **Draft-ODCS**:
+`profile_source.py` liest die Quelle (Demo: CSV File-Export) und erzeugt ein **Profiling-Protokoll**:
 - Spaltennamen, abgeleitete `logicalType`/`physicalType`, Nullable (aus Null-Quote)
-- **Kandidaten-Quality-Regeln**: not-null (0 Nulls beobachtet), Wertebereiche (beobachtete min/max), Uniqueness (distinct==rows), abgeleitete Konsistenz (`gesamt = richtung_1 + richtung_2`)
+- **Kandidaten-Quality-Regeln**: not-null (0 Nulls beobachtet), Wertebereiche (beobachtete min/max), Uniqueness (distinct==rows), Konsistenz (`gesamt = richtung_1 + richtung_2`)
 - Freshness via `max(datum)`
 
-Der Mensch bestätigt/ergänzt nur Governance-Felder (ServiceNow). `intake_to_odcs.py` merged Draft-Schema + Governance → finaler Contract.
+Der Profiler läuft **außerhalb der Automatisierung** — der Datenverantwortliche kann ihn lokal nutzen, um das SN-Formular informiert auszufüllen (Spaltentypen, sinnvolle Quality-Schwellen). Die eigentliche technische Verifikation nach Freigabe übernimmt das **Quality Gate** (`run_quality.py` + dbt-Tests gegen die materialisierten Daten). `intake_to_odcs.py` übersetzt das ausgefüllte `intake.json` direkt in den finalen Contract — kein Draft-Merge.
 
 ---
 
@@ -139,12 +142,12 @@ Nach Merge: `publish-ckan-catalog.yml` → CKAN via `ckan/docker-compose.yml`; `
 
 | Workstream | Verantwortung | Kern-Deliverables |
 | --- | --- | --- |
-| **A — Domänen, Contracts & Profiler** | `domains/`-Struktur, `domain.yaml`, ODCS Input+Output (`radverkehr`) inkl. `quality`-Block, `templates`, `schemas/lhm-rules.md`, **`profile_source.py`** (CSV→Draft-ODCS), `docs/architecture.md`+`governance.md` | Beispielprodukt + Profiler + Regelwerk |
-| **B — Intake, Governance, Validierung & Katalog** | `intake.schema.json`, `intake/servicenow-catalog-item.md` (+Topologie), **`profile.yml`-Workflow + Callback-Konzept** (Profiling→dynamisches Formular, s. [Workflow-Doc](workflow-intake-approval.md)), `intake_to_odcs.py` (Merge), `intake-to-contract.yml`, `approval-gate.yml` (Required-Checks-vor-Freigabe via Branch-Protection), Issue-Form-Fallback, `validate_odcs.py`+`validate-contracts.yml`, `ckan_publish.py`+`publish-ckan-catalog.yml`+`render_catalog.py` | Intake→PR→Freigabe→CKAN/Katalog |
+| **A — Domänen, Contracts & Profiler** | `domains/`-Struktur, `domain.yaml`, ODCS Input+Output (`radverkehr`) inkl. `quality`-Block, `templates`, `schemas/lhm-rules.md`, **`profile_source.py`** (CSV→Profiling-Protokoll, Hilfsmittel), `docs/architecture.md`+`governance.md` | Beispielprodukt + Profiler + Regelwerk |
+| **B — Intake, Governance, Validierung & Katalog** | `intake.schema.json`, `intake/servicenow-catalog-item.md` (+Topologie), `intake_to_odcs.py` (intake.json→Contract, kein Profiler-Merge), `intake-to-contract.yml` (getriggert nach SN-Freigabe), `approval-gate.yml` (technisches Sicherheitsnetz), Issue-Form-Fallback, `validate_odcs.py`+`validate-contracts.yml`, `ckan_publish.py`+`publish-ckan-catalog.yml`+`render_catalog.py` | Intake→SN-Freigabe→Trigger→PR→Gates→CKAN/Katalog |
 | **C — Data Pipeline, Quality & Output Port** | `pipeline/ingest/load_csv.py` (dlt→DuckDB), `pipeline/dbt/` (staging+mart+Tests), `run_quality.py`, `pipeline-and-quality.yml`, **Output Port**: View `radverkehr_tageswerte` + Parquet/CSV-Export unter `output/`, **`apply_access.py`** (Contract→GRANTs/`access-policy.json`, s. [Access-Doc](access-and-output-port.md)), `ckan/docker-compose.yml` | Pipeline + Quality-Gate + bereitgestellter Output Port + Zugriffspolicy |
 
 **Meilensteine:**
-- **h3** — A: Profiler erzeugt Draft-ODCS aus CSV; B: intake.schema + Merge erzeugt Contract lokal; C: dlt lädt CSV→DuckDB, dbt-staging läuft.
+- **h3** — A: Profiler erzeugt Profiling-Protokoll aus CSV; B: intake.schema + intake_to_odcs erzeugt Contract lokal aus example-intake.json; C: dlt lädt CSV→DuckDB, dbt-staging läuft.
 - **h6** — Integration 1: PR aus `intake.json`; validate-Gate grün; dbt-mart `radverkehr_tageswerte` existiert.
 - **h9** — Integration 2: quality-gate (Contract-Regeln + dbt-Tests) im PR; approval-gate über Labels; lokale CKAN nimmt `package_create`.
 - **h11** — End-to-End: Quelle → Profiler+Formular → PR → alle Gates grün → Freigabe → Merge → CKAN aktualisiert → Katalog gerendert.
@@ -176,10 +179,10 @@ Repo-Layout, ODCS-Contracts, dbt-Modelle und Skripte sind weitgehend CI-agnostis
 
 ## Verification (End-to-End-Demo)
 
-1. **Quelle→Draft:** `profile_source.py` auf CSV → Draft-ODCS mit Schema + Kandidatenregeln.
-2. **Intake:** `example-intake.json` (Governance) → `intake-to-contract.yml` öffnet PR mit fertigem Contract + Labels.
-3. **Negativtests:** (a) `open_data_candidate: true` ohne `license` → validate rot. (b) manipulierte Daten `gesamt ≠ richtung_1+richtung_2` → quality-gate rot. (c) `personal_data: true` ohne `dsb-approved` → approval-gate rot.
-4. **Positivlauf:** korrigieren → dlt+dbt bauen `radverkehr_tageswerte`, alle Gates grün, Labels gesetzt → Merge.
+1. **Profiler (optional, lokal):** `profile_source.py` auf CSV → Profiling-Protokoll (zeigt was aus den Daten erkennbar ist; informiert das Ausfüllen des Formulars).
+2. **Intake + Freigabe:** `example-intake.json` manuell → Freigabe simuliert (Labels auf Issue) → `intake-to-contract.yml` öffnet PR mit fertigem Contract.
+3. **Negativtests:** (a) `open_data_candidate: true` ohne `license` → validate rot. (b) manipulierte Daten `gesamt ≠ richtung_1+richtung_2` → quality-gate rot. (c) fehlende Freigabe-Labels → approval-gate rot.
+4. **Positivlauf:** korrigieren → dlt+dbt bauen `radverkehr_tageswerte`, alle Gates grün → Auto-Merge.
 5. **CKAN:** `publish-ckan-catalog` pusht Metadaten in lokale CKAN; Katalogseite aktualisiert.
 
 ---

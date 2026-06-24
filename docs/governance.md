@@ -11,9 +11,10 @@
 | Data Steward | operative Pflege von Contract/Qualität |
 
 ## Freigabe (Reihenfolge)
-1. **Maschine zuerst:** `validate-contracts` + `pipeline-and-quality` müssen grün sein (Branch-Protection).
-2. **Mensch danach:** Dateneigner (`owner-approved`) → DSB (`dsb-approved`, nur bei personenbezogenen Daten).
-3. Merge → `publish-ckan-catalog`.
+1. **Governance zuerst (ServiceNow):** Dateneigner (immer) → DSB (nur wenn `personal_data=true`). Frage: darf dieses Produkt existieren? Orthogonal zur technischen Korrektheit.
+2. **ERST NACH Freigabe:** ServiceNow triggert GitLab einmal mit `intake.json`.
+3. **Technische Gates auf dem MR (Sicherheitsnetz):** `validate-contracts` + `pipeline-and-quality`. Scheitert ein Gate, bleibt der MR offen — Antragsteller korrigiert die Implementierung; keine erneute Governance-Freigabe nötig.
+4. Alle Gates grün → Auto-Merge → `publish-ckan-catalog`.
 
 ## Klassifizierung
 `public | internal | confidential` (Contract-`customProperties`). Steuert Zugriffskontrolle ([access-and-output-port.md](access-and-output-port.md)) und Open-Data-Eignung.

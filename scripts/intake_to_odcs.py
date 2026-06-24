@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """intake_to_odcs.py — Workstream B
 
-Merged den Profiling-Draft mit den Governance-Feldern aus intake.json
-(validiert gegen schemas/intake.schema.json) zu einem finalen ODCS-v3-Contract
-+ data-product.yaml unter domains/<domain>/data-products/<product>/.
+Übersetzt das vollständig ausgefüllte intake.json (nach Governance-Freigabe in
+ServiceNow) direkt in einen finalen ODCS-v3-Contract + data-product.yaml unter
+domains/<domain>/data-products/<product>/. Validiert intake.json gegen
+schemas/intake.schema.json. Kein Profiler-Draft-Merge — intake.json ist die
+einzige Eingabe.
 
 Aufruf:
     python scripts/intake_to_odcs.py --intake intake/intake.example.json
