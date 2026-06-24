@@ -2,9 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://lhm/data-contracts/intake.schema.json",
   "title": "LHM Data Product Intake Payload",
-  "description": "Payload, das ServiceNow (bzw. der Issue-Form-Fallback) an die Pipeline übergibt. Vereint den maschinellen Profiling-Draft mit den menschlichen Governance-Feldern. intake_to_odcs.py erzeugt daraus den finalen ODCS-Contract. GEMEINSAME SCHNITTSTELLE — in Stunde 0-1 abstimmen, bevor A/B/C loslaufen.",
+  "description": "Payload, das ServiceNow nach Governance-Freigabe an die Pipeline übergibt. Enthält ausschließlich Governance-Felder — technisches Schema (Spalten, Typen) zieht der Profiler automatisch aus der CSV (source.location). intake_to_odcs.py merged Profiler-Output + dieses Payload zum finalen ODCS-Contract. GEMEINSAME SCHNITTSTELLE — in Stunde 0-1 abstimmen, bevor A/B/C loslaufen.",
   "type": "object",
-  "required": ["domain", "product", "title", "owner", "classification", "source", "columns"],
+  "required": ["domain", "product", "title", "owner", "classification", "source"],
   "additionalProperties": false,
   "properties": {
     "domain": {
@@ -66,7 +66,7 @@
     },
     "columns": {
       "type": "array",
-      "description": "Vom Profiler erkannt, vom Menschen annotiert.",
+      "description": "Optional — wird bei file_export automatisch vom Profiler aus der CSV gezogen. Bei anderen source.types (reporting_db, eai) manuell angeben.",
       "items": {
         "type": "object",
         "required": ["name", "logical_type"],
@@ -82,7 +82,7 @@
     },
     "quality_rules": {
       "type": "array",
-      "description": "Bestätigte/angepasste Kandidatenregeln aus dem Profiler.",
+      "description": "Optional — Profiler schlägt Kandidatenregeln vor; hier können Regeln überschrieben oder ergänzt werden.",
       "items": {
         "type": "object",
         "required": ["rule"],

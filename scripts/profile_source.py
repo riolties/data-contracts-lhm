@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """profile_source.py — Workstream A
 
-Liest eine Quelle (Demo: CSV File-Export) und erzeugt ein Profiling-Protokoll:
-Spalten/Typen/Nullable, Kandidaten-Quality-Regeln, PII-Verdacht, Freshness.
-
-Hilfsmittel für den Datenverantwortlichen beim Ausfüllen des SN-Formulars —
-kein automatisierter Pipeline-Schritt. Die eigentliche technische Verifikation
-nach Freigabe übernimmt run_quality.py gegen die materialisierten Daten.
+Schritt 1 der Post-Freigabe-Pipeline. Liest die CSV aus source.location und
+erzeugt profiling.json: Spalten/Typen/Nullable, Kandidaten-Quality-Regeln,
+PII-Verdacht, Freshness. Ausgabe wird von intake_to_odcs.py mit den
+Governance-Feldern aus intake.json zum finalen ODCS-Contract gemergt.
 
 Aufruf:
     python scripts/profile_source.py --source data/sample_radverkehr_tageswerte_2025_01.csv [--out profiling.json]

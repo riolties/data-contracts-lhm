@@ -49,9 +49,9 @@ Datenverantwortliche/r        ServiceNow (SN)                 GitLab (CI/Runner)
 ## Phasen im Detail
 
 ### (1) Formular ausfüllen
-Datenverantwortliche/r öffnet das ServiceNow-Katalog-Item „Neues Datenprodukt" und füllt **alle Felder manuell** aus: Spalten + Typen, fachliche Beschreibungen, Klassifizierung, Rechtsgrundlage (wenn `personal_data=true`), Open-Data-Flag, Lizenz, Owner.
+Datenverantwortliche/r öffnet das ServiceNow-Katalog-Item „Neues Datenprodukt" und füllt die **Governance-Felder** aus: CSV-Pfad (`source.location`), fachliche Beschreibung, Klassifizierung, Rechtsgrundlage (wenn `personal_data=true`), Open-Data-Flag, Lizenz, Owner.
 
-Der Datenverantwortliche kennt seine Daten — ein Profiler-Vorab-Scan ist nicht nötig und wäre vor Freigabe governance-seitig problematisch (Datenzugriff vor Erlaubnis). Optional kann der Datenverantwortliche `profile_source.py` **lokal** nutzen, um Spaltentypen und Quality-Schwellen informiert einzutragen.
+**Spalten und Typen werden nicht eingetragen** — die zieht der Profiler automatisch aus der CSV nach Freigabe. Das ist governance-seitig sauber: Datenzugriff findet erst nach Freigabe statt.
 
 ### (2) Freigabe in ServiceNow
 SN startet den Approval-Flow direkt nach Submit:
@@ -61,9 +61,10 @@ SN startet den Approval-Flow direkt nach Submit:
 Jede Genehmigung ist auditierbar (DSGVO Art. 30). Bis zur vollständigen Freigabe passiert **nichts** in GitLab.
 
 ### (3) Einmaliger Trigger nach Freigabe (SN → GitLab)
-Nach vollständiger Freigabe triggert SN die GitLab-Pipeline mit `intake.json`. Der CI-Job:
-- führt `intake_to_odcs.py` aus → erzeugt finalen ODCS-Contract + `data-product.yaml`
-- legt Branch an, committet, öffnet den MR
+Nach vollständiger Freigabe triggert SN die GitLab-Pipeline mit `intake.json` (enthält nur Governance-Felder + CSV-Pfad). Der CI-Job:
+1. führt `profile_source.py` auf der CSV aus → Spalten, Typen, Quality-Kandidaten
+2. führt `intake_to_odcs.py` aus → merged Profiler-Output + Governance → finaler ODCS-Contract + `data-product.yaml`
+3. legt Branch an, committet, öffnet den MR
 
 ### (4) Technische Gates (GitLab, auf dem MR)
 Als **Required Checks** laufen:
