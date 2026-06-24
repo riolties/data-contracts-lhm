@@ -128,18 +128,18 @@ def profile_csv(path: str) -> dict:
     columns = [_column_stats(name, by_col[name], row_count) for name in header]
 
     # --- Kandidaten-Quality-Regeln ---
-    candidate_quality: list[dict] = []
+    quality_rules: list[dict] = []
     for col in columns:
         name = col["name"]
         if col["null_rate"] == 0.0 and row_count:
-            candidate_quality.append({"rule": "not_null", "column": name})
+            quality_rules.append({"rule": "not_null", "column": name})
         if col["unique_rate"] == 1.0 and row_count > 1:
-            candidate_quality.append({"rule": "unique", "column": name})
+            quality_rules.append({"rule": "unique", "column": name})
         if col["logical_type"] in ("integer", "number") and col["min"] is not None:
-            candidate_quality.append({"rule": "range", "column": name, "min": col["min"], "max": col["max"]})
+            quality_rules.append({"rule": "range", "column": name, "min": col["min"], "max": col["max"]})
 
     numeric_cols = [c["name"] for c in columns if c["logical_type"] in ("integer", "number")]
-    candidate_quality.extend(_detect_sum_expressions(header, rows, numeric_cols))
+    quality_rules.extend(_detect_sum_expressions(header, rows, numeric_cols))
 
     # --- PII-Verdacht (Heuristik ueber Spaltennamen) ---
     pii_suspect = [c["name"] for c in columns if any(h in c["name"].lower() for h in PII_HINTS)]
@@ -155,7 +155,7 @@ def profile_csv(path: str) -> dict:
         "source": path,
         "row_count": row_count,
         "columns": columns,
-        "candidate_quality": candidate_quality,
+        "quality_rules": quality_rules,
         "pii_suspect": pii_suspect,
         "freshness": freshness,
     }
