@@ -72,7 +72,7 @@
         "required": ["name", "logical_type"],
         "properties": {
           "name": { "type": "string" },
-          "logical_type": { "type": "string", "enum": ["string", "integer", "number", "date", "boolean"] },
+          "logical_type": { "type": "string", "enum": ["string", "integer", "number", "date", "time", "boolean"] },
           "physical_type": { "type": "string" },
           "required": { "type": "boolean" },
           "description": { "type": "string", "description": "Fachliche Beschreibung (Mensch)." },
