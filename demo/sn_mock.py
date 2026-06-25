@@ -292,6 +292,12 @@ if step == 0:
             "classification": classification, "update_frequency": update_frequency,
             "personal_data": personal_data, "open_data_candidate": open_data_candidate,
             "source": {"type": source_type, "location": source_location},
+            # uhrzeit_start/uhrzeit_ende sind Tages-Aggregate (konstant 00:00–23:59)
+            # und gehören nicht in den Output-Port → als internal markieren
+            "columns": [
+                {"name": "uhrzeit_start", "internal": True},
+                {"name": "uhrzeit_ende", "internal": True},
+            ],
         }
         if personal_data:
             intake["legal_basis"] = legal_basis
