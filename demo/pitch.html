@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LHM Data Contracts — Hackathon Pitch</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --lhm: #003D8F;
+    --lhm-light: #E8F0FA;
+    --accent: #0065BD;
+    --green: #1a9c5b;
+    --text: #1a1a2e;
+    --muted: #64748b;
+    --white: #ffffff;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #0f0f1a;
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* ── Slide container ── */
+  .deck { width: 100vw; height: 100vh; position: relative; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    padding: 5vh 7vw;
+    opacity: 0; pointer-events: none;
+    transition: opacity .4s ease;
+  }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  /* ── Slide 1 — Challenge (dark) ── */
+  .slide-1 { background: linear-gradient(135deg, #0a0a1a 0%, #0d1b3e 100%); color: var(--white); }
+
+  /* ── Slide 2 — Solution (white) ── */
+  .slide-2 { background: var(--white); }
+
+  /* ── Slide 3 — Results (LHM blue) ── */
+  .slide-3 { background: var(--lhm); color: var(--white); }
+
+  /* ── Common elements ── */
+  .eyebrow {
+    font-size: .85rem; font-weight: 600; letter-spacing: .15em;
+    text-transform: uppercase; opacity: .55; margin-bottom: .75rem;
+  }
+
+  h1 { font-size: clamp(2rem, 4.5vw, 3.8rem); font-weight: 800; line-height: 1.1; }
+  h2 { font-size: clamp(1.5rem, 3vw, 2.4rem); font-weight: 700; line-height: 1.2; }
+
+  .subtitle {
+    font-size: clamp(.95rem, 1.6vw, 1.25rem);
+    opacity: .7; margin-top: 1rem; max-width: 55ch; line-height: 1.6;
+  }
+
+  /* ── Logo badge ── */
+  .logo-badge {
+    display: inline-flex; align-items: center; gap: .6rem;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 2rem; padding: .4rem 1rem .4rem .5rem;
+    font-size: .8rem; font-weight: 600; letter-spacing: .05em;
+    color: rgba(255,255,255,.75); margin-bottom: 2.5rem; width: fit-content;
+  }
+  .logo-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
+  .logo-badge-dark {
+    background: rgba(0,61,143,.08); border-color: rgba(0,61,143,.2);
+    color: var(--lhm); font-size: .8rem; font-weight: 600;
+    display: inline-flex; align-items: center; gap: .5rem;
+    border-radius: 2rem; padding: .35rem .9rem; margin-bottom: 2rem; width: fit-content;
+  }
+
+  /* ── Problem cards (Slide 1) ── */
+  .problems {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem;
+    margin-top: 3rem; flex: 1;
+  }
+  .problem-card {
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
+    border-radius: 1rem; padding: 1.5rem;
+  }
+  .problem-card .icon { font-size: 1.8rem; margin-bottom: .75rem; }
+  .problem-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .4rem; color: var(--white); }
+  .problem-card p { font-size: .85rem; opacity: .6; line-height: 1.5; }
+
+  /* ── Flow (Slide 2) ── */
+  .solution-body { display: grid; grid-template-columns: 1fr 1fr; gap: 3vw; margin-top: 2.5rem; flex: 1; align-items: start; }
+
+  .flow {
+    display: flex; flex-direction: column; gap: 0;
+  }
+  .flow-step {
+    display: flex; align-items: flex-start; gap: 1rem;
+    position: relative; padding-bottom: 1.25rem;
+  }
+  .flow-step:last-child { padding-bottom: 0; }
+  .flow-step::before {
+    content: ''; position: absolute; left: 1.1rem; top: 2.2rem;
+    width: 2px; height: calc(100% - 1.5rem);
+    background: linear-gradient(to bottom, var(--lhm), transparent);
+  }
+  .flow-step:last-child::before { display: none; }
+  .step-num {
+    flex-shrink: 0; width: 2.2rem; height: 2.2rem; border-radius: 50%;
+    background: var(--lhm); color: white; display: flex;
+    align-items: center; justify-content: center; font-size: .8rem; font-weight: 700;
+  }
+  .step-body h4 { font-size: .95rem; font-weight: 700; color: var(--text); }
+  .step-body p  { font-size: .8rem; color: var(--muted); margin-top: .15rem; line-height: 1.4; }
+
+  /* ── Claude panel ── */
+  .claude-panel {
+    background: #f8faff; border: 1.5px solid var(--lhm-light);
+    border-radius: 1rem; padding: 1.5rem;
+  }
+  .claude-panel h3 {
+    font-size: .9rem; font-weight: 700; color: var(--lhm);
+    margin-bottom: 1rem; display: flex; align-items: center; gap: .5rem;
+  }
+  .claude-item {
+    display: flex; align-items: flex-start; gap: .6rem;
+    margin-bottom: .7rem; font-size: .82rem; color: var(--text); line-height: 1.4;
+  }
+  .claude-item .bullet {
+    flex-shrink: 0; width: 5px; height: 5px; border-radius: 50%;
+    background: var(--lhm); margin-top: .45rem;
+  }
+
+  /* ── Results (Slide 3) ── */
+  .results-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem;
+    margin-top: 2.5rem;
+  }
+  .result-card {
+    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 1rem; padding: 1.5rem 1.25rem; text-align: center;
+  }
+  .result-num { font-size: 2.6rem; font-weight: 800; line-height: 1; }
+  .result-label { font-size: .78rem; opacity: .7; margin-top: .35rem; line-height: 1.3; }
+
+  .demo-box {
+    margin-top: 2.5rem; display: flex; align-items: center; gap: 2rem;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 1rem; padding: 1.5rem 2rem;
+  }
+  .demo-arrow { font-size: 1.5rem; opacity: .5; }
+  .demo-step { text-align: center; flex: 1; }
+  .demo-step .d-icon { font-size: 1.6rem; margin-bottom: .3rem; }
+  .demo-step .d-label { font-size: .75rem; opacity: .7; }
+  .demo-step .d-title { font-size: .9rem; font-weight: 600; }
+
+  /* ── Nav dots ── */
+  .nav {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    display: flex; gap: .6rem; z-index: 100;
+  }
+  .nav-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(255,255,255,.3); cursor: pointer;
+    transition: all .25s;
+  }
+  .nav-dot.active { background: white; width: 24px; border-radius: 4px; }
+
+  /* ── Slide number ── */
+  .slide-num {
+    position: fixed; bottom: 1.75rem; right: 2rem;
+    font-size: .75rem; color: rgba(255,255,255,.3); z-index: 100;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Key hint ── */
+  .key-hint {
+    position: fixed; bottom: 1.75rem; left: 2rem;
+    font-size: .7rem; color: rgba(255,255,255,.25); z-index: 100;
+  }
+
+  /* highlight pill */
+  .pill {
+    display: inline-block; background: var(--lhm-light); color: var(--lhm);
+    border-radius: .4rem; padding: .1rem .5rem; font-size: .75rem; font-weight: 600;
+  }
+  .pill-white {
+    display: inline-block; background: rgba(255,255,255,.15); color: white;
+    border-radius: .4rem; padding: .1rem .5rem; font-size: .75rem; font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 1 — Die Challenge
+  ════════════════════════════════════════════════ -->
+  <section class="slide slide-1 active">
+    <div class="logo-badge">
+      <span class="dot"></span>
+      Hackathon 2025 · Landeshauptstadt München
+    </div>
+
+    <div class="eyebrow" style="color:rgba(255,255,255,.5)">Die Challenge</div>
+    <h1 style="color:white">Daten in der LHM:<br>vorhanden — aber<br><span style="color:#60a5fa">unkontrolliert.</span></h1>
+    <p class="subtitle">100+ Referate, Tausende Datensätze, kein gemeinsamer Standard —<br>wer darf was nutzen? Was ist freigegeben? Was ist Qualität?</p>
+
+    <div class="problems">
+      <div class="problem-card">
+        <div class="icon">🗂️</div>
+        <h3>Keine Datendokumentation</h3>
+        <p>Jedes Referat dokumentiert anders — oder gar nicht. Keine einheitliche Beschreibung von Feldern, Typen, Qualität.</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">🔐</div>
+        <h3>Fehlende Governance</h3>
+        <p>Dateneigner*innen und Datenschutz werden nicht systematisch eingebunden. Freigaben existieren nicht formell.</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">🌐</div>
+        <h3>Open Data ohne Kontrolle</h3>
+        <p>Open-Data-Veröffentlichung auf GovData/CKAN erfolgt manuell, inkonsistent — ohne Qualitäts- und Compliance-Gate.</p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 2 — Unsere Lösung
+  ════════════════════════════════════════════════ -->
+  <section class="slide slide-2">
+    <div class="logo-badge-dark">
+      🏛️ &nbsp;LHM Data Contracts &amp; Data Products
+    </div>
+
+    <div class="eyebrow" style="color:var(--muted)">Unsere Lösung</div>
+    <h2>Governance-first. Automatisiert. Standardisiert.</h2>
+
+    <div class="solution-body">
+      <!-- Flow -->
+      <div class="flow">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>ServiceNow-Formular</h4>
+            <p>Datenverantwortliche*r füllt Governance-Felder aus — kein Spalten-Mapping, nur Kontext &amp; Zweck.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Freigabe (Dateneigner*in + DSB)</h4>
+            <p>Zweistufige Governance in SN — erst nach vollständiger Freigabe geht es weiter.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Automatische Pipeline (GitHub Actions)</h4>
+            <p>Profiler extrahiert Spalten aus CSV · <span class="pill">ODCS v3</span> Contract wird generiert · Pull Request öffnet sich.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Technische Gates</h4>
+            <p>Schema-Validierung · LHM-Regeln R1–R10 · dlt→DuckDB→dbt · Qualitätsprüfung.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <h4>Merge → CKAN-Publish</h4>
+            <p>DCAT-AP.de Metadaten + bereinigte Daten automatisch nach CKAN — compliant &amp; reproduzierbar.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Claude panel -->
+      <div class="claude-panel">
+        <h3>🤖 Claude als Entwicklungspartner</h3>
+        <div class="claude-item"><span class="bullet"></span><div><strong>Architektur:</strong> Governance-First-Prinzip erarbeitet — SN-Approval vor jedem technischen Schritt</div></div>
+        <div class="claude-item"><span class="bullet"></span><div><strong>Workstream A Review:</strong> Profiler-Code geprüft, Zeitformat-Bug &amp; Edge-Cases behoben</div></div>
+        <div class="claude-item"><span class="bullet"></span><div><strong>Workstream B komplett:</strong> 4 Scripts + 2 GitHub Actions Workflows von Grund auf implementiert</div></div>
+        <div class="claude-item"><span class="bullet"></span><div><strong>Demo-App:</strong> Streamlit ServiceNow-Mock mit Live-GH-Actions-Polling gebaut</div></div>
+        <div class="claude-item"><span class="bullet"></span><div><strong>Debugging:</strong> YAML-Parser-Bug in Workflow behoben, Merge-Konflikt aufgelöst</div></div>
+        <div style="margin-top:1.1rem;padding-top:1rem;border-top:1px solid var(--lhm-light)">
+          <div style="font-size:.78rem;color:var(--muted);line-height:1.5">
+            Claude Code schrieb ~80% des Codes im Pair-Programming-Modus —
+            Architekturentscheidungen, Implementierung, Review und Debugging
+            in einer einzigen Konversation.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 3 — Ergebnisse & Demo
+  ════════════════════════════════════════════════ -->
+  <section class="slide slide-3">
+    <div class="logo-badge" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)">
+      <span class="dot"></span>
+      Ergebnisse &amp; Live-Demo
+    </div>
+
+    <div class="eyebrow" style="color:rgba(255,255,255,.5)">Was wir in 24h gebaut haben</div>
+    <h2 style="color:white">End-to-end in unter 5 Minuten —<br>vom Formular bis zum CKAN-Eintrag.</h2>
+
+    <div class="results-grid">
+      <div class="result-card">
+        <div class="result-num">3</div>
+        <div class="result-label">Workstreams<br>(Profiler · Contracts · Pipeline)</div>
+      </div>
+      <div class="result-card">
+        <div class="result-num">7</div>
+        <div class="result-label">Scripts<br>(profile · generate · validate · publish · …)</div>
+      </div>
+      <div class="result-card">
+        <div class="result-num">5</div>
+        <div class="result-label">GitHub Actions<br>Workflows</div>
+      </div>
+      <div class="result-card">
+        <div class="result-num">ODCS<br><span style="font-size:1.2rem">v3</span></div>
+        <div class="result-label">Internationaler Standard<br>+ 10 LHM-Regeln</div>
+      </div>
+    </div>
+
+    <div class="demo-box">
+      <div class="demo-step">
+        <div class="d-icon">🏛️</div>
+        <div class="d-title">SN-Formular</div>
+        <div class="d-label">Governance-Felder</div>
+      </div>
+      <div class="demo-arrow">→</div>
+      <div class="demo-step">
+        <div class="d-icon">✅</div>
+        <div class="d-title">Freigabe</div>
+        <div class="d-label">Dateneigner*in · DSB</div>
+      </div>
+      <div class="demo-arrow">→</div>
+      <div class="demo-step">
+        <div class="d-icon">⚙️</div>
+        <div class="d-title">GitHub Actions</div>
+        <div class="d-label">Profiler · ODCS · PR</div>
+      </div>
+      <div class="demo-arrow">→</div>
+      <div class="demo-step">
+        <div class="d-icon">🔍</div>
+        <div class="d-title">Gates</div>
+        <div class="d-label">Schema · Qualität · Compliance</div>
+      </div>
+      <div class="demo-arrow">→</div>
+      <div class="demo-step">
+        <div class="d-icon">🌐</div>
+        <div class="d-title">CKAN</div>
+        <div class="d-label">DCAT-AP.de · Open Data</div>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /deck -->
+
+<!-- Navigation -->
+<div class="nav">
+  <div class="nav-dot active" onclick="goTo(0)"></div>
+  <div class="nav-dot" onclick="goTo(1)"></div>
+  <div class="nav-dot" onclick="goTo(2)"></div>
+</div>
+<div class="slide-num" id="slideNum">1 / 3</div>
+<div class="key-hint">← → Pfeiltasten · Leertaste</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const dots   = document.querySelectorAll('.nav-dot');
+  const numEl  = document.getElementById('slideNum');
+  let cur = 0;
+
+  function goTo(n) {
+    slides[cur].classList.remove('active');
+    dots[cur].classList.remove('active');
+    cur = Math.max(0, Math.min(n, slides.length - 1));
+    slides[cur].classList.add('active');
+    dots[cur].classList.add('active');
+    numEl.textContent = `${cur + 1} / ${slides.length}`;
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ')  goTo(cur + 1);
+    if (e.key === 'ArrowLeft')                    goTo(cur - 1);
+  });
+</script>
+</body>
+</html>
