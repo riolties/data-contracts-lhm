@@ -66,10 +66,10 @@
     },
     "columns": {
       "type": "array",
-      "description": "Optional — wird bei file_export automatisch vom Profiler aus der CSV gezogen. Bei anderen source.types (reporting_db, eai) manuell angeben.",
+      "description": "Optional — wird bei file_export automatisch vom Profiler aus der CSV gezogen. Bei anderen source.types (reporting_db, eai) manuell angeben. Einträge sind Annotationen/Overrides zum Profiler-Output: nur 'name' ist Pflicht; logical_type/physical_type kommen sonst aus dem Profiler. So genügt z.B. {name, internal:true}, um eine Quellspalte aus dem Output-Port zu projizieren.",
       "items": {
         "type": "object",
-        "required": ["name", "logical_type"],
+        "required": ["name"],
         "properties": {
           "name": { "type": "string" },
           "logical_type": { "type": "string", "enum": ["string", "integer", "number", "date", "time", "boolean"] },
